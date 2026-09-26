@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from './utils/supabaseClient'; // ADDED: Live database connection
 import { 
-  loadQuestionBanks, 
   saveQuestionBanks, 
   loadTestAttempts, 
   saveTestAttempt, 
@@ -44,7 +44,10 @@ import { GoogleAuthModal } from './components/GoogleAuthModal';
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>('overview');
-  const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>(() => loadQuestionBanks());
+  
+  // CHANGED: Start with an empty list instead of local storage
+  const [questionBanks, setQuestionBanks] = useState<any[]>([]); 
+  
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>(() => loadTestAttempts());
   const [activeSession, setActiveSession] = useState<ActiveTestSession | null>(() => loadActiveTestSession());
   const [markingScheme, setMarkingScheme] = useState<MarkingSchemeConfig>(() => loadMarkingScheme());
@@ -55,19 +58,33 @@ export default function App() {
   const [selectedAttemptForReview, setSelectedAttemptForReview] = useState<TestAttempt | null>(null);
   const [targetBankIdForSetup, setTargetBankIdForSetup] = useState<string | undefined>(undefined);
 
-  // Crash recovery / Reload detection: If there is an active test session, prompt or resume
+  // ADDED: Fetch globally from Supabase on app load
+  useEffect(() => {
+    const fetchLiveDatabase = async () => {
+      const { data, error } = await supabase
+        .from('question_banks')
+        .select('*, questions(*)') // Pulls the banks AND their nested 50 questions
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setQuestionBanks(data);
+      } else if (error) {
+        console.error('Error fetching live Supabase data:', error);
+      }
+    };
+
+    fetchLiveDatabase();
+  }, []);
+
+  // Crash recovery / Reload detection
   useEffect(() => {
     if (activeSession) {
       if (activeSession.remaining_seconds <= 0) {
-        // Auto-finalize if expired during offline period
         finalizeExam(activeSession);
-      } else {
-        // Active test exists; can remain in current tab or offer resume
       }
     }
   }, []);
 
-  // Handler to start a new mock test
   const handleStartTest = (bankId: string) => {
     const bank = questionBanks.find(b => b.id === bankId);
     if (!bank) return;
@@ -101,13 +118,11 @@ export default function App() {
     }
   };
 
-  // Update session during active test
   const handleUpdateSession = (updated: ActiveTestSession) => {
     setActiveSession(updated);
     saveActiveTestSession(updated);
   };
 
-  // Finalize and submit exam
   const finalizeExam = (sessionToFinalize: ActiveTestSession) => {
     const totalTimeUsed = Math.max(1, sessionToFinalize.duration_seconds - sessionToFinalize.remaining_seconds);
     const completedAttempt = evaluateTest(
@@ -124,15 +139,12 @@ export default function App() {
       }
     );
 
-    // Save to attempts
     saveTestAttempt(completedAttempt);
     setTestAttempts(prev => [completedAttempt, ...prev.filter(a => a.id !== completedAttempt.id)]);
 
-    // Clear active session
     clearActiveTestSession();
     setActiveSession(null);
 
-    // Show result
     setSelectedAttemptForReview(completedAttempt);
     setCurrentTab('result');
   };
@@ -147,14 +159,12 @@ export default function App() {
     }
   };
 
-  // Add Question Bank
   const handleAddQuestionBank = (newBank: QuestionBank) => {
     const updated = [newBank, ...questionBanks];
     setQuestionBanks(updated);
     saveQuestionBanks(updated);
   };
 
-  // Delete Question Bank
   const handleDeleteQuestionBank = (bankId: string) => {
     if (confirm('Delete this question bank? This will not affect completed test attempts.')) {
       const updated = questionBanks.filter(b => b.id !== bankId);
@@ -163,7 +173,6 @@ export default function App() {
     }
   };
 
-  // Add Question manually to bank
   const handleAddQuestionToBank = (bankId: string, question: Question) => {
     const updated = questionBanks.map(b => {
       if (b.id === bankId) {
@@ -180,26 +189,22 @@ export default function App() {
     saveQuestionBanks(updated);
   };
 
-  // Restore Default Sample Bank
   const handleRestoreDefaultBank = () => {
     const defaultList = resetToDefaultBanks();
     setQuestionBanks(defaultList);
     alert('Default UGC-NET Paper I standard question bank successfully reloaded!');
   };
 
-  // Update Marking Scheme
   const handleUpdateMarkingScheme = (newConfig: MarkingSchemeConfig) => {
     setMarkingScheme(newConfig);
     saveMarkingScheme(newConfig);
   };
 
-  // View specific historical attempt
   const handleViewAttemptResults = (attempt: TestAttempt) => {
     setSelectedAttemptForReview(attempt);
     setCurrentTab('result');
   };
 
-  // Delete specific attempt
   const handleDeleteAttempt = (attemptId: string) => {
     if (confirm('Delete this historical test attempt?')) {
       deleteTestAttempt(attemptId);
@@ -207,19 +212,16 @@ export default function App() {
     }
   };
 
-  // Clear all attempts
   const handleClearAllAttempts = () => {
     clearAllTestAttempts();
     setTestAttempts([]);
   };
 
-  // Update User Profile
   const handleUpdateProfile = (updated: UserProfile) => {
     setUserProfile(updated);
     saveUserProfile(updated);
   };
 
-  // Google Authentication handlers
   const handleLoginSuccess = (user: AuthUser) => {
     setAuthUser(user);
     saveAuthUser(user);
@@ -279,7 +281,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 font-sans flex flex-col selection:bg-blue-200">
-      {/* Navigation Header (Hidden during active exam focus mode) */}
       {currentTab !== 'exam' && (
         <Header
           currentTab={currentTab}
@@ -296,9 +297,7 @@ export default function App() {
         />
       )}
 
-      {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Tab 1: Dashboard */}
         {currentTab === 'dashboard' && (
           <Dashboard
             questionBanks={questionBanks}
@@ -313,7 +312,6 @@ export default function App() {
           />
         )}
 
-        {/* Tab 2: Start Mock Test Setup */}
         {currentTab === 'start-test' && (
           <StartTestSetup
             questionBanks={questionBanks}
@@ -325,7 +323,6 @@ export default function App() {
           />
         )}
 
-        {/* Tab 3: Active Examination Screen (Focus Mode) */}
         {currentTab === 'exam' && activeSession && (
           <ExamInterface
             session={activeSession}
@@ -334,7 +331,6 @@ export default function App() {
           />
         )}
 
-        {/* Tab 4: Results & Question-by-Question Review */}
         {currentTab === 'result' && selectedAttemptForReview && (
           <ResultView
             attempt={selectedAttemptForReview}
@@ -347,7 +343,6 @@ export default function App() {
           />
         )}
 
-        {/* Profile Hub: Houses Candidate Profile, Question Banks, Test History, Performance Analytics, and Admin */}
         {isProfileTabActive && (
           <ProfileView
             profile={userProfile}
@@ -377,7 +372,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Google Authentication Modal */}
       <GoogleAuthModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
