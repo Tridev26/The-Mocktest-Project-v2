@@ -1,0 +1,334 @@
+================================================================================
+          UGC-NET-MOCK TEST ENGINE V.2 — APPLICATION SPECIFICATION & DOCUMENTATION
+================================================================================
+Generated for: Model Evaluation, Code Audits, and Benchmark Testing
+Target Exam: UGC-NET Paper I (General Paper on Teaching & Research Aptitude)
+Release: Version 2.0 (Full-Stack SPA)
+Date: 2026-09-25
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE SUMMARY & OBJECTIVES
+--------------------------------------------------------------------------------
+UGC-NET-MOCK TEST (MOCK ENGINE V.2) is a specialized, production-grade examination
+simulation web application designed for aspirants preparing for the National
+Eligibility Test (UGC-NET / JRF) conducted by the National Testing Agency (NTA).
+
+Key Design Objectives:
+1. High-Fidelity NTA Interface: Replicates the authentic computer-based testing (CBT)
+   experience with an interactive question palette, color-coded question statuses,
+   countdown timer with auto-submit, and question review markings.
+2. Official Exam Pattern: Exactly 50 multiple-choice questions (MCQs) drawn from 10
+   prescribed UGC-NET Paper I syllabus units, evaluated under a 60-minute countdown
+   with 2 marks per correct response and zero negative marking (configurable).
+3. Question Bank Operations: Comprehensive ingestion pipeline supporting CSV, JSON,
+   and XLSX formats with schema validation, duplicate detection, and category sorting.
+4. Comprehensive Performance Analytics: Post-exam breakdown with accuracy percentage,
+   unit-by-unit strength/weakness analysis, time spent per question, and full
+   explanation reviews.
+5. Google Identity Integration: Seamless Google authentication system with login/logout
+   support, candidate profile management, target milestone tracking, and local
+   storage persistence.
+
+--------------------------------------------------------------------------------
+2. TECHNICAL STACK & ARCHITECTURE
+--------------------------------------------------------------------------------
+- Framework: React 18+ (Functional Components with Hooks)
+- Language: TypeScript (Strict Type Safety)
+- Build System: Vite
+- Styling: Tailwind CSS (Modern responsive design, dark/light theme accents)
+- Iconography: Lucide-React
+- Data Parsing: XLSX (SheetJS) for spreadsheet import & native JSON/CSV parsers
+- Persistence: Browser LocalStorage with schema versioning and session fail-safes
+- State Management: React useState / useEffect / custom local storage utilities
+
+Architecture Style:
+- Single Page Application (SPA) with tab-based navigation routing:
+  * 'dashboard': Main overview and quick test launcher
+  * 'start-test': Exam configuration and rules verification
+  * 'exam': Fullscreen CBT examination mode (focus mode)
+  * 'result': Post-submission scorecard and question-by-question review
+  * 'profile': Unified Candidate Hub containing:
+      - Profile Overview (Google account status, target score goal, personal details)
+      - Question Banks Management
+      - Test Attempt History
+      - Unit Performance Analytics
+      - Admin Settings (marking scheme & manual question builder)
+
+--------------------------------------------------------------------------------
+3. CORE SYSTEM MODULES & FUNCTIONALITY
+--------------------------------------------------------------------------------
+
+3.1 Navigation & Header System (src/components/Header.tsx)
+- Top bar with branding: "UGC-NET-MOCK TEST" with badge "MOCK ENGINE V.2"
+- Sticky banner notification when an active exam session is detected in progress,
+  allowing seamless 1-click resumption or discard.
+- Streamlined primary navigation containing:
+  * Dashboard
+  * Start Mock Test
+  * Profile (Interactive dropdown with avatar, Google connection indicator,
+    and direct shortcuts to Profile, Question Banks, History, Analytics, Admin,
+    and Google Sign-In/Log-Out)
+
+3.2 Examination Engine (src/components/ExamInterface.tsx & src/utils/testEngine.ts)
+- Test Generation:
+  * Pulls random or sequential 50 questions from selected question bank.
+  * Shuffles question order to eliminate pattern bias.
+- Real-Time Exam Clock:
+  * 60-minute countdown (3600 seconds) driven by background setInterval.
+  * Visual warnings at 5 minutes and 1 minute remaining.
+  * Automatic submission upon clock expiry without loss of answers.
+- NTA Question Palette:
+  * Interactive 50-grid matrix with official color codes:
+    - Silver/Grey: Not Visited
+    - Red/Rose: Visited, Not Answered
+    - Emerald/Green: Answered
+    - Purple/Indigo: Marked for Review (Unanswered)
+    - Blue/Purple with Green dot: Answered & Marked for Review
+  * Quick filter toggles to view questions by status.
+- Question Actions:
+  * "Save & Next": Saves selected option and advances to next question.
+  * "Mark for Review & Next": Flags question for later re-checking and advances.
+  * "Clear Response": Unselects current chosen radio option.
+  * "Previous" / "Next" pagination buttons.
+- Fail-Safe & Crash Recovery:
+  * Active session continuously saved to LocalStorage on every question change.
+  * Browser reloads or accidental navigation automatically prompts to resume test.
+
+3.3 Scoring & Evaluation Engine (src/utils/testEngine.ts)
+- Automated evaluation comparing user responses against correct answers.
+- Calculates:
+  * Total Score (Default: +2 marks per correct, configurable)
+  * Percentage & Accuracy (Correct / Attempted)
+  * Count breakdown: Correct, Incorrect, Unattempted, Marked for Review
+  * Time spent per individual question and overall duration
+  * Unit-level aggregation across the 10 UGC-NET syllabus units:
+    1. Teaching Aptitude
+    2. Research Aptitude
+    3. Reading Comprehension
+    4. Communication
+    5. Mathematical Reasoning & Aptitude
+    6. Logical Reasoning
+    7. Data Interpretation
+    8. Information & Communication Technology (ICT)
+    9. People, Development & Environment
+    10. Higher Education System
+
+3.4 Results & Review View (src/components/ResultView.tsx)
+- Scorecard Header: Total marks scored out of 100, percentile indicator, pass status.
+- Breakdown Cards: Correct, Incorrect, Skipped, and Time Taken.
+- Filterable Question-by-Question Review:
+  * Filter questions by: All, Correct, Incorrect, Unanswered.
+  * Shows Question text, Options with highlight of User Answer vs Correct Answer.
+  * Detailed explanations and unit categorization.
+  * "Retake Test" or "Return to Dashboard" actions.
+
+3.5 Single Merged Performance Summary (src/components/Dashboard.tsx)
+- Replaced 7 individual cards with a single unified component container.
+- Houses 7 performance dimensions with vertical dividers and colored status badges:
+  1. Tests Attempted
+  2. Average Score
+  3. Best Score (High watermark)
+  4. Average Accuracy Rate (%)
+  5. Total Questions Answered
+  6. Total Correct Answers
+  7. Total Incorrect Answers
+
+3.6 Google Account Authentication & Profile (src/components/GoogleAuthModal.tsx, ProfileView.tsx)
+- Google Identity Services simulation with authentic Google 'G' branding.
+- One-click sign-in with default candidate account (TridevRuidas@gmail.com) or custom Google email.
+- Authentication State Management:
+  * Logged In: Displays Google user name, email, Google Verified badge, and Log Out option.
+  * Logged Out: Switches to Guest Mode, displays "Log In" with Google G-icon, prompts sign-in.
+- Candidate Profile Hub:
+  * Full name, registered email, application/roll number, category, target exam.
+  * Milestone goal tracker: Target score out of 100 with dynamic progress bar.
+  * Embedded sub-tabs for Question Banks, Test History, Performance Analytics, Admin Settings.
+
+3.7 Admin & Question Bank Manager (src/components/QuestionBankView.tsx, AdminSettingsView.tsx)
+- Multi-format file uploader: CSV, JSON, and XLSX.
+- Schema Validator: Ensures mandatory fields (question, options [A-D], correct answer, unit, explanation).
+- Deduplication Engine: Detects and filters identical questions.
+- Built-in default question bank with authentic UGC-NET Paper I standard questions.
+- Admin marking scheme configuration: custom marks per correct, negative marking penalty, duration.
+
+--------------------------------------------------------------------------------
+4. DATA CONTRACTS & TYPES (TypeScript)
+--------------------------------------------------------------------------------
+export interface Question {
+  id: string;
+  question: string;
+  options: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  explanation?: string;
+  unit?: string;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+}
+
+export interface QuestionBank {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  questions: Question[];
+  is_default?: boolean;
+}
+
+export interface TestAttempt {
+  id: string;
+  question_bank_id: string;
+  question_bank_name: string;
+  timestamp: string;
+  total_questions: number;
+  score: number;
+  max_score: number;
+  percentage: number;
+  accuracy: number;
+  time_spent_seconds: number;
+  correct_count: number;
+  incorrect_count: number;
+  unattempted_count: number;
+  user_answers: Record<string, 'A' | 'B' | 'C' | 'D'>;
+  question_time_spent: Record<string, number>;
+  questions: Question[];
+  unit_breakdown: Record<string, { total: number; correct: number; incorrect: number }>;
+}
+
+export interface ActiveTestSession {
+  id: string;
+  question_bank_id: string;
+  question_bank_name: string;
+  start_time: string;
+  duration_minutes: number;
+  remaining_seconds: number;
+  questions: Question[];
+  current_question_index: number;
+  user_answers: Record<string, 'A' | 'B' | 'C' | 'D'>;
+  marked_for_review: Record<string, boolean>;
+  question_time_spent: Record<string, number>;
+  last_active_timestamp: number;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  rollNumber: string;
+  targetExam: string;
+  category: string;
+  targetScore: number;
+  preparationStartDate?: string;
+  avatarUrl?: string;
+}
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  isLoggedIn: boolean;
+  provider: 'google';
+  loginTimestamp?: number;
+}
+
+--------------------------------------------------------------------------------
+5. LOCAL STORAGE SCHEMAS & FAIL-SAFES
+--------------------------------------------------------------------------------
+Keys utilized:
+- 'ugc_net_question_banks_v1': Serialized list of available QuestionBank objects.
+- 'ugc_net_test_attempts_v1': Historical TestAttempt logs for charts & analytics.
+- 'ugc_net_active_session_v1': Snapshot of currently ongoing exam session.
+- 'ugc_net_marking_scheme_v1': System scoring rules (positive marks, negative marks, timer).
+- 'ugc_net_user_profile_v1': Candidate personal details and target score milestone.
+- 'ugc_net_auth_user_v1': Active Google authenticated session token/user profile.
+
+Fail-safe behaviors:
+- Gracefully initializes with DEFAULT_QUESTION_BANK if storage is empty.
+- Automatic expiration & submission if active session exceeds duration during offline state.
+- Resilient JSON parse routines with fallbacks prevent app crashes on malformed data.
+
+--------------------------------------------------------------------------------
+6. SUPABASE BACKEND ARCHITECTURE & 10-YEAR EXCEL ARCHIVES
+--------------------------------------------------------------------------------
+The application supports seamless transition to a relational Supabase PostgreSQL backend
+for community-shared 10-year question archives.
+
+6.1 Environment Variables:
+- VITE_SUPABASE_URL: Project URL (e.g., https://your-project.supabase.co)
+- VITE_SUPABASE_ANON_KEY: Project Anonymous Public API Key
+
+6.2 Relational Schema (PostgreSQL with RLS):
+Tables:
+1. `question_banks` (Parent table):
+   - id: UUID PRIMARY KEY DEFAULT gen_random_uuid()
+   - name: TEXT NOT NULL (Archive / Shift title)
+   - exam_year: INTEGER NOT NULL (e.g. 2014-2024)
+   - uploaded_by: TEXT DEFAULT 'Anonymous Aspirant'
+   - created_at: TIMESTAMPTZ DEFAULT now()
+   - description: TEXT
+   - total_questions: INTEGER DEFAULT 0
+
+2. `questions` (Child table with Foreign Key):
+   - id: UUID PRIMARY KEY DEFAULT gen_random_uuid()
+   - bank_id: UUID NOT NULL REFERENCES question_banks(id) ON DELETE CASCADE
+   - question_text: TEXT NOT NULL
+   - option_a: TEXT NOT NULL
+   - option_b: TEXT NOT NULL
+   - option_c: TEXT NOT NULL
+   - option_d: TEXT NOT NULL
+   - correct_answer: TEXT NOT NULL CHECK (correct_answer IN ('A', 'B', 'C', 'D'))
+   - explanation: TEXT
+   - unit: TEXT DEFAULT 'General Teaching & Research Aptitude'
+   - difficulty: TEXT DEFAULT 'Medium' CHECK (difficulty IN ('Easy', 'Medium', 'Hard'))
+   - created_at: TIMESTAMPTZ DEFAULT now()
+
+Row Level Security (RLS) Policies:
+- Public Read: Allows all users to query verified archives.
+- Public Insert: Allows community aspirants to upload 10-year question sets.
+- Foreign Key Integrity: Ensures questions can only be inserted for valid parent banks.
+
+6.3 Two-Step Database Insert Pipeline:
+1. Step 1: Inserts the bank header row into `question_banks` using .insert({...}).select('id').single().
+2. Step 2: Extracts the generated parent bank UUID and maps it to all validated question rows as `bank_id`.
+3. Step 3: Inserts all questions into `questions` table in batches. If Step 2 fails, auto-rolls back orphan records.
+
+6.4 Excel Validator & Ingestion Rules:
+- Columns required: Question, Option A, Option B, Option C, Option D, Correct Answer.
+- Strict Answer Key validation: Case-insensitive check enforcing only values in ['A', 'B', 'C', 'D'].
+- Pre-built downloadable template: `UGC_NET_Paper1_10Year_Archive_Template.xlsx`.
+
+--------------------------------------------------------------------------------
+7. BENCHMARK & EVALUATION CRITERIA FOR AI MODELS
+--------------------------------------------------------------------------------
+When evaluating other LLMs or code engines against this implementation, test for:
+
+1. State Integrity & Recovery:
+   - Does the test state survive browser refresh without resetting the timer to 60m?
+   - Are user answers and marked-for-review flags preserved precisely?
+
+2. NTA Palette Logic Accuracy:
+   - Is an unvisited question correctly marked silver?
+   - Visited but unanswered marked red?
+   - Answered marked green?
+   - Answered + Marked for review marked purple with green indicator dot?
+
+3. Scoring Accuracy:
+   - Correct answers = correct_count * marks_per_correct.
+   - Negative marking correctly deducted if configured > 0.
+   - Accuracy strictly calculated as correct_count / (correct_count + incorrect_count).
+
+4. Component Architecture & Cohesion:
+   - Are repetitive cards unified into clean single components (e.g. Performance Summary)?
+   - Are secondary navigation elements neatly housed within the Profile dropdown?
+   - Is authentication state reactively synchronized between Header, Profile, and Modals?
+
+5. Type Safety & Zero-Error Compilation:
+   - Does `tsc --noEmit` pass with zero type errors?
+   - Are all nullable states handled without runtime exceptions?
+
+================================================================================
+                              END OF SPECIFICATION
+================================================================================

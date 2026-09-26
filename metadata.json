@@ -1,0 +1,8 @@
+{
+  "name": "Remix UGC-NET Paper I Mock Test Exam Engine",
+  "description": "A clean, realistic UGC-NET Paper I mock test application with question bank import, 50-question 60-minute timer, question palette, answer explanations, and performance analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
