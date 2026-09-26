@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PlayCircle, 
   Database, 
@@ -12,6 +12,7 @@ import {
   ArrowLeft 
 } from 'lucide-react';
 import { QuestionBank, MarkingSchemeConfig } from '../types';
+import { supabase } from '../utils/supabaseClient';
 
 interface StartTestSetupProps {
   questionBanks: QuestionBank[];
@@ -23,20 +24,40 @@ interface StartTestSetupProps {
 }
 
 export const StartTestSetup: React.FC<StartTestSetupProps> = ({
-  questionBanks,
   initialBankId,
   markingScheme,
   onBeginTest,
   onCancel,
   onUploadRedirect,
 }) => {
-  const [selectedBankId, setSelectedBankId] = useState<string>(
-    initialBankId || (questionBanks.length > 0 ? questionBanks[0].id : '')
-  );
+  const [liveBanks, setLiveBanks] = useState<any[]>([]);
+  const [selectedBankId, setSelectedBankId] = useState<string>(initialBankId || '');
   const [confirmedInstructions, setConfirmedInstructions] = useState(true);
 
-  const selectedBank = questionBanks.find(b => b.id === selectedBankId);
-  const questionCount = selectedBank ? selectedBank.questions.length : 0;
+  // Fetch from Supabase when the component loads
+  useEffect(() => {
+    const fetchBanks = async () => {
+      // We select the banks AND count their related questions
+      const { data, error } = await supabase
+        .from('question_banks')
+        .select('*, questions(id)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching banks:', error);
+      } else if (data) {
+        setLiveBanks(data);
+        if (data.length > 0 && !initialBankId) {
+          setSelectedBankId(data[0].id);
+        }
+      }
+    };
+
+    fetchBanks();
+  }, [initialBankId]);
+
+  const selectedBank = liveBanks.find(b => b.id === selectedBankId);
+  const questionCount = selectedBank && selectedBank.questions ? selectedBank.questions.length : 0;
   const isEligible = questionCount >= 50;
 
   return (
@@ -51,7 +72,6 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
 
       {/* Main Container */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden">
-        {/* Header Header */}
         <div className="bg-slate-900 text-white p-6 sm:p-8">
           <div className="flex items-center gap-3 mb-2">
             <span className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
@@ -72,14 +92,14 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
               1. Select Question Bank:
             </label>
 
-            {questionBanks.length === 0 ? (
+            {liveBanks.length === 0 ? (
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
                 No question banks found. Please upload a question bank first.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {questionBanks.map((bank) => {
-                  const hasEnough = bank.questions.length >= 50;
+                {liveBanks.map((bank) => {
+                  const hasEnough = (bank.questions?.length || 0) >= 50;
                   const isSelected = bank.id === selectedBankId;
                   return (
                     <div
@@ -98,7 +118,7 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
                             ? 'bg-emerald-100 text-emerald-800' 
                             : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {bank.questions.length} Questions
+                          {bank.questions?.length || 0} Questions
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -139,14 +159,12 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
               <Layers className="w-4 h-4 text-indigo-600" />
               2. Test Structure & Marking Scheme:
             </h2>
-
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                 <div className="text-xs text-slate-500 font-medium">Total Questions</div>
                 <div className="text-xl font-extrabold text-slate-900 mt-1">50</div>
                 <div className="text-[11px] text-slate-500">Randomized Order</div>
               </div>
-
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                 <div className="text-xs text-slate-500 font-medium">Duration</div>
                 <div className="text-xl font-extrabold text-blue-600 mt-1">
@@ -154,7 +172,6 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
                 </div>
                 <div className="text-[11px] text-slate-500">Auto-submit at 00:00</div>
               </div>
-
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                 <div className="text-xs text-slate-500 font-medium">Correct Mark</div>
                 <div className="text-xl font-extrabold text-emerald-600 mt-1">
@@ -162,7 +179,6 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
                 </div>
                 <div className="text-[11px] text-slate-500">Per question</div>
               </div>
-
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                 <div className="text-xs text-slate-500 font-medium">Negative Mark</div>
                 <div className="text-xl font-extrabold text-rose-600 mt-1">
@@ -175,13 +191,12 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
             </div>
           </div>
 
-          {/* Step 3: Instructions & Examination Guidelines */}
+          {/* Step 3: Instructions */}
           <div className="space-y-3">
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-emerald-600" />
               3. Important Examination Instructions:
             </h2>
-
             <div className="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200 text-xs sm:text-sm text-slate-700 space-y-2.5 leading-relaxed">
               <div className="flex items-start gap-2">
                 <span className="font-bold text-slate-900">•</span>
@@ -198,10 +213,6 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
               <div className="flex items-start gap-2">
                 <span className="font-bold text-slate-900">•</span>
                 <span>Use the <strong>Question Palette</strong> to jump directly to any question. You can use <strong>"Mark for Review"</strong> to flag questions you wish to reconsider later.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="font-bold text-slate-900">•</span>
-                <span>When the timer reaches zero, the test will <strong>automatically submit</strong>. You can also submit anytime manually after confirmation.</span>
               </div>
             </div>
           </div>
@@ -227,7 +238,6 @@ export const StartTestSetup: React.FC<StartTestSetupProps> = ({
             >
               Cancel
             </button>
-
             <button
               disabled={!isEligible || !confirmedInstructions}
               onClick={() => isEligible && onBeginTest(selectedBankId)}
