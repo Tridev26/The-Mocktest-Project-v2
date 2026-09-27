@@ -83,6 +83,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       return;
     }
 
+    const targetBank = questionBanks.find(b => b.id === targetBankId);
     const newQuestion: Question = {
       id: `manual-q-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       question_text: qText.trim(),
@@ -92,9 +93,10 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       option_d: optD.trim(),
       correct_answer: correctKey,
       explanation: explanation.trim() || undefined,
-      unit: unit.trim() || 'Paper I General',
+      unit: unit.trim() || (targetBank?.paper_type === 'paper2' ? 'Computer Science Subject' : 'Paper I General'),
       topic: topic.trim() || 'General',
       difficulty: difficulty,
+      paper_type: targetBank?.paper_type || 'paper1',
     };
 
     onAddQuestionToBank(targetBankId, newQuestion);

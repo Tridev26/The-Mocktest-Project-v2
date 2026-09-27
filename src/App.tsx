@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabaseClient'; 
 import { 
+  loadQuestionBanks,
   saveQuestionBanks, 
   loadTestAttempts, 
   saveTestAttempt, 
@@ -26,9 +27,11 @@ import {
   ActiveTestSession, 
   MarkingSchemeConfig, 
   Question,
-  UserProfile
+  UserProfile,
+  TestPaperMode,
+  PAPER_MODE_DETAILS
 } from './types';
-import { generateTestQuestions, evaluateTest } from './utils/testEngine';
+import { generatePaperModeQuestions, evaluateTest } from './utils/testEngine';
 
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
@@ -41,7 +44,7 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>('overview');
   
-  const [questionBanks, setQuestionBanks] = useState<any[]>([]); 
+  const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>(() => loadQuestionBanks()); 
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>(() => loadTestAttempts());
   const [activeSession, setActiveSession] = useState<ActiveTestSession | null>(() => loadActiveTestSession());
   const [markingScheme, setMarkingScheme] = useState<MarkingSchemeConfig>(() => loadMarkingScheme());
@@ -49,18 +52,28 @@ export default function App() {
 
   const [selectedAttemptForReview, setSelectedAttemptForReview] = useState<TestAttempt | null>(null);
   const [targetBankIdForSetup, setTargetBankIdForSetup] = useState<string | undefined>(undefined);
+  const [targetPaperModeForSetup, setTargetPaperModeForSetup] = useState<TestPaperMode>('paper1');
 
   useEffect(() => {
     const fetchLiveDatabase = async () => {
-      const { data, error } = await supabase
-        .from('question_banks')
-        .select('*, questions(*)') 
-        .order('created_at', { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from('question_banks')
+          .select('*, questions(*)') 
+          .order('created_at', { ascending: false });
 
-      if (data) {
-        setQuestionBanks(data);
-      } else if (error) {
-        console.error('Error fetching live Supabase data:', error);
+        if (data && data.length > 0) {
+          const defaultList = loadQuestionBanks();
+          const merged = [...data];
+          defaultList.forEach(db => {
+            if (!merged.some(mb => mb.id === db.id || mb.name === db.name)) {
+              merged.push(db);
+            }
+          });
+          setQuestionBanks(merged);
+        }
+      } catch (err) {
+        console.warn('Could not connect to Supabase, continuing with local banks:', err);
       }
     };
 
@@ -75,29 +88,50 @@ export default function App() {
     }
   }, []);
 
-  const handleStartTest = (bankId: string) => {
-    const bank = questionBanks.find(b => b.id === bankId);
-    if (!bank) return;
+  const handleStartTest = (
+    paperMode: TestPaperMode = 'paper1',
+    paper1BankId?: string,
+    paper2BankId?: string
+  ) => {
+    const p1Bank = paper1BankId
+      ? questionBanks.find(b => b.id === paper1BankId)
+      : questionBanks.find(b => b.paper_type !== 'paper2' && !b.name.toLowerCase().includes('paper ii'));
 
-    if (bank.questions.length < 50) {
-      alert(`This question bank has only ${bank.questions.length} questions. Exactly 50 questions are required to start a UGC-NET mock test.`);
-      return;
-    }
+    const p2Bank = paper2BankId
+      ? questionBanks.find(b => b.id === paper2BankId)
+      : questionBanks.find(b => b.paper_type === 'paper2' || b.name.toLowerCase().includes('paper ii') || b.questions.length >= 100);
+
+    const modeDetails = PAPER_MODE_DETAILS[paperMode] || PAPER_MODE_DETAILS.paper1;
+    const durationSeconds = modeDetails.durationMinutes * 60;
 
     try {
-      const questions50 = generateTestQuestions(bank, 50);
+      const generatedQuestions = generatePaperModeQuestions(paperMode, p1Bank, p2Bank);
+
+      let bankDisplayName = '';
+      if (paperMode === 'paper1') {
+        bankDisplayName = p1Bank?.name || 'UGC-NET Paper I Standard';
+      } else if (paperMode === 'paper2') {
+        bankDisplayName = p2Bank?.name || 'UGC-NET Paper II Subject';
+      } else {
+        bankDisplayName = `${p1Bank?.name || 'Paper I'} + ${p2Bank?.name || 'Paper II'}`;
+      }
+
       const newSession: ActiveTestSession = {
         id: `sess-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        question_bank_id: bank.id,
-        question_bank_name: bank.name,
+        paper_mode: paperMode,
+        question_bank_id: p1Bank?.id || p2Bank?.id || 'bank-default',
+        question_bank_name: bankDisplayName,
+        paper2_bank_id: p2Bank?.id,
+        paper2_bank_name: p2Bank?.name,
         started_at: Date.now(),
-        duration_seconds: markingScheme.test_duration_minutes * 60,
-        remaining_seconds: markingScheme.test_duration_minutes * 60,
+        duration_seconds: durationSeconds,
+        remaining_seconds: durationSeconds,
         current_index: 0,
-        attempt_questions: questions50,
+        attempt_questions: generatedQuestions,
         marks_per_correct: markingScheme.marks_per_correct,
         negative_marks_per_incorrect: markingScheme.negative_marks_per_incorrect,
         last_tick_timestamp: Date.now(),
+        active_section_tab: 0,
       };
 
       saveActiveTestSession(newSession);
@@ -125,8 +159,11 @@ export default function App() {
         marks_per_correct: sessionToFinalize.marks_per_correct,
         negative_marks_per_incorrect: sessionToFinalize.negative_marks_per_incorrect,
         test_duration_minutes: Math.round(sessionToFinalize.duration_seconds / 60),
-        questions_per_test: 50,
-      }
+        questions_per_test: sessionToFinalize.attempt_questions.length,
+      },
+      sessionToFinalize.paper_mode || 'paper1',
+      sessionToFinalize.paper2_bank_id,
+      sessionToFinalize.paper2_bank_name
     );
 
     saveTestAttempt(completedAttempt);
@@ -180,7 +217,7 @@ export default function App() {
   const handleRestoreDefaultBank = () => {
     const defaultList = resetToDefaultBanks();
     setQuestionBanks(defaultList);
-    alert('Default UGC-NET Paper I standard question bank successfully reloaded!');
+    alert('Default UGC-NET Paper I & Paper II standard question banks successfully reloaded!');
   };
 
   const handleUpdateMarkingScheme = (newConfig: MarkingSchemeConfig) => {
@@ -213,6 +250,7 @@ export default function App() {
   const handleSelectTab = (tab: string, subTab?: string) => {
     if (tab === 'start-test') {
       setTargetBankIdForSetup(undefined);
+      setTargetPaperModeForSetup('paper1');
       setCurrentTab('start-test');
     } else if (['question-banks', 'history', 'analytics', 'admin'].includes(tab)) {
       setProfileSubTab(tab as ProfileSubTab);
@@ -248,8 +286,9 @@ export default function App() {
           <Dashboard
             questionBanks={questionBanks}
             testAttempts={testAttempts}
-            onStartTest={(bankId) => {
+            onStartTest={(bankId, mode) => {
               setTargetBankIdForSetup(bankId);
+              setTargetPaperModeForSetup(mode || 'paper1');
               setCurrentTab('start-test');
             }}
             onNavigateTab={handleSelectTab}
@@ -262,6 +301,7 @@ export default function App() {
           <StartTestSetup
             questionBanks={questionBanks}
             initialBankId={targetBankIdForSetup}
+            initialPaperMode={targetPaperModeForSetup}
             markingScheme={markingScheme}
             onBeginTest={handleStartTest}
             onCancel={() => setCurrentTab('dashboard')}
@@ -283,6 +323,7 @@ export default function App() {
             allAttempts={testAttempts}
             onRetakeTest={(bankId) => {
               setTargetBankIdForSetup(bankId);
+              setTargetPaperModeForSetup(selectedAttemptForReview.paper_mode || 'paper1');
               setCurrentTab('start-test');
             }}
             onBackToDashboard={() => setCurrentTab('dashboard')}
@@ -300,6 +341,7 @@ export default function App() {
             onChangeSubTab={(newSubTab) => setProfileSubTab(newSubTab)}
             onStartTest={(bankId) => {
               setTargetBankIdForSetup(bankId);
+              setTargetPaperModeForSetup('paper1');
               setCurrentTab('start-test');
             }}
             onAddQuestionBank={handleAddQuestionBank}

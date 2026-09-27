@@ -1,5 +1,6 @@
 import { QuestionBank, TestAttempt, ActiveTestSession, MarkingSchemeConfig, UserProfile, AuthUser } from '../types';
 import { DEFAULT_QUESTION_BANK } from '../data/sampleQuestionBank';
+import { DEFAULT_PAPER2_QUESTION_BANK } from '../data/samplePaper2QuestionBank';
 
 const STORAGE_KEYS = {
   BANKS: 'ugc_net_question_banks_v1',
@@ -22,9 +23,9 @@ export const DEFAULT_USER_PROFILE: UserProfile = {
   name: 'Guest Candidate',
   email: 'guest@gmail.com',
   rollNumber: 'NET-2026-08429',
-  targetExam: 'UGC-NET Paper I (Assistant Professor / JRF)',
+  targetExam: 'UGC-NET Paper I & II (Assistant Professor / JRF)',
   category: 'General',
-  targetScore: 80,
+  targetScore: 220,
   preparationStartDate: '2026-01-01',
 };
 
@@ -38,21 +39,31 @@ export const DEFAULT_MARKING_SCHEME: MarkingSchemeConfig = {
 // Question Banks
 export function loadQuestionBanks(): QuestionBank[] {
   try {
+    const defaultBanks = [DEFAULT_QUESTION_BANK, DEFAULT_PAPER2_QUESTION_BANK];
     const raw = localStorage.getItem(STORAGE_KEYS.BANKS);
     if (!raw) {
-      // Initialize with default official sample
-      saveQuestionBanks([DEFAULT_QUESTION_BANK]);
-      return [DEFAULT_QUESTION_BANK];
+      saveQuestionBanks(defaultBanks);
+      return defaultBanks;
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      saveQuestionBanks([DEFAULT_QUESTION_BANK]);
-      return [DEFAULT_QUESTION_BANK];
+      saveQuestionBanks(defaultBanks);
+      return defaultBanks;
+    }
+
+    // Ensure DEFAULT_PAPER2_QUESTION_BANK is present if not already added
+    let hasUpdated = false;
+    if (!parsed.some((b: QuestionBank) => b.id === DEFAULT_PAPER2_QUESTION_BANK.id || b.name.includes('Paper II'))) {
+      parsed.push(DEFAULT_PAPER2_QUESTION_BANK);
+      hasUpdated = true;
+    }
+    if (hasUpdated) {
+      saveQuestionBanks(parsed);
     }
     return parsed;
   } catch (e) {
     console.error('Failed to load question banks from localStorage', e);
-    return [DEFAULT_QUESTION_BANK];
+    return [DEFAULT_QUESTION_BANK, DEFAULT_PAPER2_QUESTION_BANK];
   }
 }
 
@@ -65,7 +76,7 @@ export function saveQuestionBanks(banks: QuestionBank[]): void {
 }
 
 export function resetToDefaultBanks(): QuestionBank[] {
-  const defaultList = [DEFAULT_QUESTION_BANK];
+  const defaultList = [DEFAULT_QUESTION_BANK, DEFAULT_PAPER2_QUESTION_BANK];
   saveQuestionBanks(defaultList);
   return defaultList;
 }

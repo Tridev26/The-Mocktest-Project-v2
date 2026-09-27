@@ -23,7 +23,7 @@ import {
   isSupabaseConfigured, 
   ParsedExcelQuestion 
 } from '../utils/supabaseClient';
-import { QuestionBank, Question } from '../types';
+import { QuestionBank, Question, PaperType } from '../types';
 
 interface ExcelArchiveUploaderProps {
   onSuccessUpload?: (newBank: QuestionBank) => void;
@@ -54,6 +54,8 @@ export const ExcelArchiveUploader: React.FC<ExcelArchiveUploaderProps> = ({
   const [examYear, setExamYear] = useState<number>(new Date().getFullYear());
   const [uploaderName, setUploaderName] = useState(defaultUploaderName);
   const [description, setDescription] = useState('');
+  const [paperType, setPaperType] = useState<PaperType>('paper1');
+  const [subjectName, setSubjectName] = useState('Computer Science & Applications');
 
   // File parsing states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -266,10 +268,12 @@ export const ExcelArchiveUploader: React.FC<ExcelArchiveUploaderProps> = ({
     const localBankObject: QuestionBank = {
       id: generatedId,
       name: bankName.trim(),
-      description: description.trim() || `UGC-NET Paper I Archive (${examYear}) with ${parsedQuestions.length} validated MCQs`,
+      description: description.trim() || `UGC-NET ${paperType === 'paper2' ? 'Paper II' : 'Paper I'} Archive (${examYear}) with ${parsedQuestions.length} validated MCQs`,
       uploaded_by: uploaderName.trim() || 'Anonymous Aspirant',
       created_at: new Date().toISOString(),
       question_count: parsedQuestions.length,
+      paper_type: paperType,
+      subject: paperType === 'paper2' ? (subjectName.trim() || 'Computer Science & Applications') : 'General Aptitude (Paper I)',
       questions: parsedQuestions.map((q, idx) => ({
         id: `q-arch-${idx + 1}-${Date.now()}`,
         question_text: q.question_text,
@@ -281,6 +285,7 @@ export const ExcelArchiveUploader: React.FC<ExcelArchiveUploaderProps> = ({
         explanation: q.explanation,
         unit: q.unit,
         difficulty: q.difficulty,
+        paper_type: paperType,
       })),
       is_default: false,
     };
@@ -316,7 +321,63 @@ export const ExcelArchiveUploader: React.FC<ExcelArchiveUploaderProps> = ({
    * Generates and downloads a clean, pre-formatted UGC-NET 10-Year Excel Template.
    */
   const handleDownloadTemplate = () => {
-    const templateData = [
+    const templateData = paperType === 'paper2' ? [
+      {
+        'Question': 'Which of the following problems is known to be undecidable in Theory of Computation?',
+        'Option A': 'Membership problem for Regular Languages',
+        'Option B': 'Halting problem for Turing Machines',
+        'Option C': 'Emptiness problem for Context-Free Grammars',
+        'Option D': 'Equivalence problem for Deterministic Finite Automata',
+        'Correct Answer': 'B',
+        'Unit': 'Theory of Computation & Compilers',
+        'Explanation': 'Alan Turing proved in 1936 that the Halting Problem for Turing Machines is undecidable via diagonalization.',
+        'Difficulty': 'Medium'
+      },
+      {
+        'Question': 'In a Relational Database Management System, which normal form eliminates transitive dependencies for non-prime attributes?',
+        'Option A': 'First Normal Form (1NF)',
+        'Option B': 'Second Normal Form (2NF)',
+        'Option C': 'Third Normal Form (3NF)',
+        'Option D': 'Boyce-Codd Normal Form (BCNF)',
+        'Correct Answer': 'C',
+        'Unit': 'Database Management Systems',
+        'Explanation': '3NF requires 2NF plus no non-prime attribute should be transitively dependent on any candidate key.',
+        'Difficulty': 'Easy'
+      },
+      {
+        'Question': 'In Operating Systems, which of the following Coffman conditions is violated when a system allows preemption of allocated resources?',
+        'Option A': 'Mutual Exclusion',
+        'Option B': 'Hold and Wait',
+        'Option C': 'No Preemption',
+        'Option D': 'Circular Wait',
+        'Correct Answer': 'C',
+        'Unit': 'Operating Systems',
+        'Explanation': 'Allowing resource preemption directly breaks the No Preemption condition, thereby preventing or resolving deadlocks.',
+        'Difficulty': 'Easy'
+      },
+      {
+        'Question': 'What is the worst-case time complexity of QuickSort on an array of n elements using the Lomuto partition scheme with the first element as pivot?',
+        'Option A': 'O(n)',
+        'Option B': 'O(n log n)',
+        'Option C': 'O(n^2)',
+        'Option D': 'O(2^n)',
+        'Correct Answer': 'C',
+        'Unit': 'Data Structures & Algorithms',
+        'Explanation': 'When the input array is already sorted or reverse sorted, QuickSort exhibits its worst-case complexity of O(n^2).',
+        'Difficulty': 'Medium'
+      },
+      {
+        'Question': 'In Computer Networks, what is the default port number used by the Border Gateway Protocol (BGP)?',
+        'Option A': 'TCP 179',
+        'Option B': 'UDP 161',
+        'Option C': 'TCP 53',
+        'Option D': 'UDP 67',
+        'Correct Answer': 'A',
+        'Unit': 'Computer Networks & Internet Technology',
+        'Explanation': 'BGP uses TCP port 179 to establish reliable neighbor peering sessions.',
+        'Difficulty': 'Medium'
+      }
+    ] : [
       {
         'Question': 'Which of the following is the key characteristic of formative evaluation?',
         'Option A': 'It is conducted at the end of an academic session',
@@ -390,9 +451,11 @@ export const ExcelArchiveUploader: React.FC<ExcelArchiveUploaderProps> = ({
     ];
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'UGC_NET_Paper1_Archive');
+    const sheetName = paperType === 'paper2' ? 'UGC_NET_Paper2_Archive' : 'UGC_NET_Paper1_Archive';
+    const fileName = paperType === 'paper2' ? 'UGC_NET_Paper2_10Year_Archive_Template.xlsx' : 'UGC_NET_Paper1_10Year_Archive_Template.xlsx';
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-    XLSX.writeFile(workbook, 'UGC_NET_Paper1_10Year_Archive_Template.xlsx');
+    XLSX.writeFile(workbook, fileName);
   };
 
   const copySqlToClipboard = () => {
@@ -578,48 +641,102 @@ CREATE POLICY "Public Insert Questions" ON public.questions FOR INSERT WITH CHEC
           </div>
         )}
 
-        {/* Step 1: Archive Metadata */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Archive / Question Bank Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              placeholder="e.g. UGC-NET Paper I (December 2023 - Shift 1)"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
+        {/* Step 1: Archive Metadata & Target Paper Selection */}
+        <div className="space-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-slate-800 uppercase tracking-wide">Target Exam Paper</p>
+              <p className="text-[11px] text-slate-500">Designate whether this archive is for Paper-I (50 Qs) or Paper-II (100 Qs)</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPaperType('paper1')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  paperType === 'paper1'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <span>Paper-I</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${paperType === 'paper1' ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600'}`}>
+                  General Aptitude (50 Qs)
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaperType('paper2')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                  paperType === 'paper2'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <span>Paper-II</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${paperType === 'paper2' ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-100 text-slate-600'}`}>
+                  Subject Specific (100 Qs)
+                </span>
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Exam Year (10-Year Archive) *
-            </label>
-            <input
-              type="number"
-              min="2010"
-              max="2030"
-              value={examYear}
-              onChange={(e) => setExamYear(Number(e.target.value))}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Archive / Question Bank Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder={paperType === 'paper2' ? "e.g. UGC-NET Paper II CS (Dec 2023 - Shift 1)" : "e.g. UGC-NET Paper I (Dec 2023 - Shift 1)"}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Exam Year (10-Year Archive) *
+              </label>
+              <input
+                type="number"
+                min="2010"
+                max="2030"
+                value={examYear}
+                onChange={(e) => setExamYear(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Contributor / Uploader Handle
+              </label>
+              <input
+                type="text"
+                value={uploaderName}
+                onChange={(e) => setUploaderName(e.target.value)}
+                placeholder="e.g. Tridev Ruidas"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Contributor / Uploader Handle
-            </label>
-            <input
-              type="text"
-              value={uploaderName}
-              onChange={(e) => setUploaderName(e.target.value)}
-              placeholder="e.g. Tridev Ruidas"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
+          {paperType === 'paper2' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Subject Specialization
+              </label>
+              <input
+                type="text"
+                value={subjectName}
+                onChange={(e) => setSubjectName(e.target.value)}
+                placeholder="e.g. Computer Science & Applications, Commerce, History, English..."
+                className="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-indigo-50/20"
+              />
+            </div>
+          )}
         </div>
 
         {/* Step 2: Drag and Drop File Area */}

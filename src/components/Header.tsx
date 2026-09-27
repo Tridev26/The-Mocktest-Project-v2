@@ -13,6 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { ActiveTestSession } from '../types';
+import { formatDetailedTime } from '../utils/testEngine';
 
 interface HeaderProps {
   currentTab: string;
@@ -69,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
             <span>
-              <strong>Active Mock Test In Progress:</strong> {activeSession.question_bank_name} ({Math.floor(activeSession.remaining_seconds / 60)}m {activeSession.remaining_seconds % 60}s remaining)
+              <strong>Active Mock Test In Progress:</strong> {activeSession.question_bank_name} ({formatDetailedTime(activeSession.remaining_seconds)} remaining)
             </span>
           </div>
           <div className="flex items-center gap-3">

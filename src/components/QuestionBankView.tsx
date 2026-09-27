@@ -46,6 +46,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [bankName, setBankName] = useState<string>('');
   const [bankDescription, setBankDescription] = useState<string>('');
+  const [bankPaperType, setBankPaperType] = useState<'paper1' | 'paper2'>('paper1');
+  const [bankSubject, setBankSubject] = useState<string>('');
+  const [bankFilter, setBankFilter] = useState<'all' | 'paper1' | 'paper2'>('all');
   const [validationResult, setValidationResult] = useState<ParseValidationResult | null>(null);
   const [activeFileName, setActiveFileName] = useState<string>('');
   const [inspectBank, setInspectBank] = useState<QuestionBank | null>(null);
@@ -93,7 +96,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       uploaded_by: 'User',
       created_at: new Date().toISOString(),
       question_count: validationResult.valid.length,
-      questions: validationResult.valid,
+      questions: validationResult.valid.map(q => ({ ...q, paper_type: bankPaperType })),
+      paper_type: bankPaperType,
+      subject: bankSubject.trim() || (bankPaperType === 'paper2' ? 'Subject Specialization' : 'General Paper I'),
     };
 
     onAddQuestionBank(newBank);
@@ -101,6 +106,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     setValidationResult(null);
     setBankName('');
     setBankDescription('');
+    setBankSubject('');
     setActiveFileName('');
   };
 
@@ -327,7 +333,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             {/* Input Details to Save Bank */}
             {validationResult.valid.length > 0 ? (
               <div className="space-y-4 pt-2 border-t border-slate-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Paper Module Type:
+                    </label>
+                    <select
+                      value={bankPaperType}
+                      onChange={(e) => setBankPaperType(e.target.value as 'paper1' | 'paper2')}
+                      className="w-full text-sm px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                    >
+                      <option value="paper1">Paper-I (General Aptitude)</option>
+                      <option value="paper2">Paper-II (Subject Specialization)</option>
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Question Bank Title:
@@ -336,46 +356,59 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       type="text"
                       value={bankName}
                       onChange={(e) => setBankName(e.target.value)}
-                      placeholder="e.g. UGC-NET Paper I — Practice Set 2026"
+                      placeholder={bankPaperType === 'paper2' ? 'e.g. UGC-NET Paper II — Computer Science' : 'e.g. UGC-NET Paper I — Practice Set 2026'}
                       className="w-full text-sm px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Description (Optional):
+                      Subject / Discipline (Optional):
                     </label>
                     <input
                       type="text"
-                      value={bankDescription}
-                      onChange={(e) => setBankDescription(e.target.value)}
-                      placeholder="e.g. 100 questions covering Research and Teaching Aptitude"
+                      value={bankSubject}
+                      onChange={(e) => setBankSubject(e.target.value)}
+                      placeholder={bankPaperType === 'paper2' ? 'e.g. Computer Science & Applications' : 'e.g. General Teaching & Research'}
                       className="w-full text-sm px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Description (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    value={bankDescription}
+                    onChange={(e) => setBankDescription(e.target.value)}
+                    placeholder="e.g. 100 questions covering core syllabus domains"
+                    className="w-full text-sm px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
                 <div className="flex items-center justify-between pt-2">
                   <div className="text-xs text-slate-500">
-                    {validationResult.valid.length >= 50 ? (
+                    {validationResult.valid.length >= (bankPaperType === 'paper2' ? 100 : 50) ? (
                       <span className="text-emerald-700 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        Sufficient questions ({validationResult.valid.length}) to generate 50-Q tests.
+                        Sufficient questions ({validationResult.valid.length}) to generate {bankPaperType === 'paper2' ? '100-Q Paper-II' : '50-Q Paper-I'} tests.
                       </span>
                     ) : (
                       <span className="text-amber-700 font-semibold flex items-center gap-1">
                         <Info className="w-4 h-4 text-amber-600" />
-                        Contains {validationResult.valid.length} questions (50 needed to create a test).
+                        Contains {validationResult.valid.length} questions ({bankPaperType === 'paper2' ? '100 needed for Paper-II' : '50 needed for Paper-I'}).
                       </span>
                     )}
                   </div>
 
                   <button
                     onClick={handleSaveBank}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow flex items-center gap-2"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow flex items-center gap-2 cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    Confirm & Save Question Bank
+                    Confirm & Save {bankPaperType === 'paper2' ? 'Paper-II' : 'Paper-I'} Bank
                   </button>
                 </div>
               </div>
@@ -389,19 +422,55 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       </section>
       )}
 
-      {/* Question Banks List (Requirement 14) */}
+      {/* Question Banks List */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <Database className="w-5 h-5 text-indigo-600" />
-          My Question Banks ({questionBanks.length})
-        </h2>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Database className="w-5 h-5 text-indigo-600" />
+            My Question Banks ({questionBanks.length})
+          </h2>
+
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg text-xs font-bold">
+            <button
+              onClick={() => setBankFilter('all')}
+              className={`px-3 py-1 rounded transition cursor-pointer ${
+                bankFilter === 'all' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All ({questionBanks.length})
+            </button>
+            <button
+              onClick={() => setBankFilter('paper1')}
+              className={`px-3 py-1 rounded transition cursor-pointer ${
+                bankFilter === 'paper1' ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Paper-I ({questionBanks.filter(b => b.paper_type !== 'paper2' && !b.name.includes('Paper II')).length})
+            </button>
+            <button
+              onClick={() => setBankFilter('paper2')}
+              className={`px-3 py-1 rounded transition cursor-pointer ${
+                bankFilter === 'paper2' ? 'bg-white shadow text-indigo-700' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Paper-II ({questionBanks.filter(b => b.paper_type === 'paper2' || b.name.includes('Paper II')).length})
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {questionBanks.map((bank) => {
-            const isEligible = bank.questions.length >= 50;
+          {questionBanks
+            .filter(b => {
+              if (bankFilter === 'paper1') return b.paper_type !== 'paper2' && !b.name.includes('Paper II');
+              if (bankFilter === 'paper2') return b.paper_type === 'paper2' || b.name.includes('Paper II');
+              return true;
+            })
+            .map((bank) => {
+              const isP2 = bank.paper_type === 'paper2' || bank.name.includes('Paper II');
+              const isEligible = isP2 ? bank.questions.length >= 100 : bank.questions.length >= 50;
 
-            // Unique units represented
-            const units = Array.from(new Set(bank.questions.map(q => q.unit || 'General'))).filter(Boolean);
+              // Unique units represented
+              const units = Array.from(new Set(bank.questions.map(q => q.unit || 'General'))).filter(Boolean);
 
             return (
               <div
@@ -411,9 +480,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          isP2 ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {isP2 ? 'Paper-II' : 'Paper-I'}
+                        </span>
+                        {bank.subject && (
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {bank.subject}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-base text-slate-900">{bank.name}</h3>
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
-                        {bank.description || 'Uploaded question bank for UGC NET Paper I.'}
+                        {bank.description || (isP2 ? 'Question bank for UGC NET Paper II.' : 'Question bank for UGC NET Paper I.')}
                       </p>
                     </div>
 
@@ -432,10 +513,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
                     <span className={`font-semibold px-2.5 py-0.5 rounded ${
                       isEligible
-                        ? 'bg-emerald-50 text-emerald-700'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold'
                         : 'bg-amber-50 text-amber-700'
                     }`}>
-                      {isEligible ? '50-Q Test Ready' : 'Needs 50+ Questions'}
+                      {isEligible ? (isP2 ? '100-Q Test Ready' : '50-Q Test Ready') : (isP2 ? 'Needs 100+ Questions' : 'Needs 50+ Questions')}
                     </span>
 
                     <span className="text-slate-400 text-[11px] self-center">

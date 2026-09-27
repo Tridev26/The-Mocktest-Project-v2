@@ -9,11 +9,11 @@ import {
   AlertTriangle, 
   Check, 
   X, 
-  HelpCircle,
   Menu,
   ShieldAlert,
   Send,
-  Sparkles
+  Layers,
+  FileText
 } from 'lucide-react';
 import { ActiveTestSession, AttemptQuestion } from '../types';
 import { formatTime } from '../utils/testEngine';
@@ -35,15 +35,23 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
   const [timeWarning, setTimeWarning] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
+  const [paletteSectionFilter, setPaletteSectionFilter] = useState<'all' | 0 | 1>('all');
+
+  const isCombinedMode = session.paper_mode === 'paper1_paper2';
+
+  // Current section (0 for Paper-I, 1 for Paper-II)
+  const currentQ = questions[currentIdx] || questions[0];
+  const currentSectionIdx = isCombinedMode ? (currentIdx < 50 ? 0 : 1) : 0;
 
   // Time spent tracker on current question
   const currentQStartTimeRef = useRef<number>(Date.now());
   const timerIntervalRef = useRef<any>(null);
+  const warned30Ref = useRef<boolean>(session.remaining_seconds <= 1800);
   const warned15Ref = useRef<boolean>(session.remaining_seconds <= 900);
   const warned5Ref = useRef<boolean>(session.remaining_seconds <= 300);
   const warned1Ref = useRef<boolean>(session.remaining_seconds <= 60);
 
-  // Synchronize state when question changes
+  // Synchronize time spent
   const recordQuestionTime = (fromIndex: number) => {
     const elapsedSeconds = Math.max(1, Math.round((Date.now() - currentQStartTimeRef.current) / 1000));
     setQuestions(prev => {
@@ -71,8 +79,11 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
 
         const nextVal = prev - 1;
 
-        // Warnings at 15m (900s), 5m (300s), 1m (60s)
-        if (nextVal <= 900 && !warned15Ref.current) {
+        // Warnings at 30m (for 2hr/3hr tests), 15m, 5m, 1m
+        if (nextVal <= 1800 && !warned30Ref.current && session.duration_seconds > 3600) {
+          warned30Ref.current = true;
+          triggerWarning('30 minutes remaining in examination.');
+        } else if (nextVal <= 900 && !warned15Ref.current) {
           warned15Ref.current = true;
           triggerWarning('15 minutes remaining! Review your unanswered questions.');
         } else if (nextVal <= 300 && !warned5Ref.current) {
@@ -191,13 +202,6 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
     }
   };
 
-  const handleMarkAndNext = () => {
-    handleToggleReview();
-    if (currentIdx < questions.length - 1) {
-      setTimeout(() => goToQuestion(currentIdx + 1), 50);
-    }
-  };
-
   const handleManualSubmitConfirm = () => {
     recordQuestionTime(currentIdx);
     setShowSubmitModal(false);
@@ -211,38 +215,56 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
     onSubmitTest(finalSession);
   };
 
-  // Status counts for palette and modal
-  let answeredCount = 0;
-  let markedCount = 0;
-  let markedAndAnsweredCount = 0;
-  let notAnsweredCount = 0;
-  let notVisitedCount = 0;
+  // Section 1 and Section 2 breakdown counts
+  const section1Questions = isCombinedMode ? questions.slice(0, 50) : questions;
+  const section2Questions = isCombinedMode ? questions.slice(50) : [];
 
-  questions.forEach(q => {
-    const hasAnswer = q.user_answer !== null;
-    const isMarked = q.marked_for_review;
+  const getStats = (qList: AttemptQuestion[]) => {
+    let answered = 0;
+    let marked = 0;
+    let markedAndAnswered = 0;
+    let notAnswered = 0;
+    let notVisited = 0;
 
-    if (hasAnswer && isMarked) {
-      markedAndAnsweredCount++;
-      answeredCount++;
-    } else if (hasAnswer) {
-      answeredCount++;
-    } else if (isMarked) {
-      markedCount++;
-    } else if (q.visited) {
-      notAnsweredCount++;
-    } else {
-      notVisitedCount++;
-    }
-  });
+    qList.forEach(q => {
+      const hasAnswer = q.user_answer !== null;
+      const isMarked = q.marked_for_review;
 
-  const currentQ = questions[currentIdx];
+      if (hasAnswer && isMarked) {
+        markedAndAnswered++;
+        answered++;
+      } else if (hasAnswer) {
+        answered++;
+      } else if (isMarked) {
+        marked++;
+      } else if (q.visited) {
+        notAnswered++;
+      } else {
+        notVisited++;
+      }
+    });
+
+    return { answered, marked, markedAndAnswered, notAnswered, notVisited, total: qList.length };
+  };
+
+  const overallStats = getStats(questions);
+  const s1Stats = getStats(section1Questions);
+  const s2Stats = getStats(section2Questions);
+
   const isLastQuestion = currentIdx === questions.length - 1;
   const isFirstQuestion = currentIdx === 0;
 
   // Visual timer urgency styling
   const isUrgent = remainingSeconds <= 300; // <= 5 minutes
   const isCritical = remainingSeconds <= 60; // <= 1 minute
+
+  // Filter questions for palette view
+  const visiblePaletteQuestions = questions.filter((q, idx) => {
+    if (!isCombinedMode || paletteSectionFilter === 'all') return true;
+    if (paletteSectionFilter === 0) return idx < 50;
+    if (paletteSectionFilter === 1) return idx >= 50;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col -mx-4 sm:-mx-6 lg:-mx-8 -my-6 sm:-my-8">
@@ -258,20 +280,26 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
       )}
 
       {/* Focus Mode Exam Header */}
-      <header className="bg-slate-900 text-white px-4 sm:px-6 py-3 sticky top-0 z-40 shadow-md border-b border-slate-800 flex items-center justify-between">
+      <header className="bg-slate-900 text-white px-4 sm:px-6 py-2.5 sticky top-0 z-40 shadow-md border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="hidden sm:block">
-            <h1 className="font-bold text-base tracking-tight">{session.question_bank_name}</h1>
-            <p className="text-xs text-slate-400">UGC-NET Paper I • 50 Questions • 60 Minutes</p>
+            <h1 className="font-bold text-sm sm:text-base tracking-tight flex items-center gap-2">
+              <span>{session.question_bank_name}</span>
+            </h1>
+            <p className="text-xs text-slate-400">
+              {session.paper_mode === 'paper1' && 'UGC-NET Paper I • 50 Questions • 60 Minutes (1 Hour)'}
+              {session.paper_mode === 'paper2' && 'UGC-NET Paper II • 100 Questions • 120 Minutes (2 Hours)'}
+              {session.paper_mode === 'paper1_paper2' && 'UGC-NET Combined (Paper I + II) • 150 Questions • 180 Minutes (3 Hours)'}
+            </p>
           </div>
-          <div className="sm:hidden font-bold text-sm text-slate-200">
+          <div className="sm:hidden font-bold text-xs text-slate-200">
             Q {currentIdx + 1} / {questions.length}
           </div>
         </div>
 
-        {/* Timer Display */}
-        <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono font-bold text-base transition-all ${
+        {/* Timer Display & Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono font-bold text-sm sm:text-base transition-all ${
             isCritical
               ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
               : isUrgent
@@ -279,7 +307,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               : 'bg-slate-800 text-blue-300 border-slate-700'
           }`}>
             <Clock className={`w-4 h-4 ${isCritical || isUrgent ? 'text-white' : 'text-blue-400'}`} />
-            <span>Time Remaining: {formatTime(remainingSeconds)}</span>
+            <span>Time Left: {formatTime(remainingSeconds)}</span>
           </div>
 
           {/* Mobile Palette Toggle */}
@@ -294,13 +322,58 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
           {/* Submit Test Button in Header */}
           <button
             onClick={() => setShowSubmitModal(true)}
-            className="hidden sm:flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-1.5 rounded-lg font-bold text-xs transition shadow cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-lg font-bold text-xs transition shadow cursor-pointer"
           >
             <Send className="w-3.5 h-3.5" />
             Submit Test
           </button>
         </div>
       </header>
+
+      {/* Official Section Switcher Bar (For Combined Mode with Two Sections) */}
+      {isCombinedMode && (
+        <div className="bg-slate-800 px-4 sm:px-6 py-2 border-b border-slate-700 flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] hidden sm:inline-block">
+              Sections:
+            </span>
+
+            {/* Section 1 Button */}
+            <button
+              onClick={() => goToQuestion(0)}
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-2 ${
+                currentSectionIdx === 0
+                  ? 'bg-blue-600 text-white shadow ring-2 ring-blue-400/40'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <span>Section 1: Paper-I (1-50)</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-900/60 font-mono">
+                {s1Stats.answered}/50
+              </span>
+            </button>
+
+            {/* Section 2 Button */}
+            <button
+              onClick={() => goToQuestion(50)}
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-2 ${
+                currentSectionIdx === 1
+                  ? 'bg-indigo-600 text-white shadow ring-2 ring-indigo-400/40'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              <span>Section 2: Paper-II (51-150)</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-900/60 font-mono">
+                {s2Stats.answered}/100
+              </span>
+            </button>
+          </div>
+
+          <div className="text-slate-400 text-[11px] hidden md:block">
+            Candidates may switch between sections at any time
+          </div>
+        </div>
+      )}
 
       {/* Main Examination Viewport */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
@@ -309,10 +382,20 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
           <div className="space-y-6">
             {/* Question Info Bar */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-extrabold text-lg text-slate-900">
-                  Question {currentIdx + 1}
-                  <span className="text-sm font-normal text-slate-500"> of {questions.length}</span>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {isCombinedMode && (
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-md text-white ${
+                    currentSectionIdx === 0 ? 'bg-blue-600' : 'bg-indigo-600'
+                  }`}>
+                    {currentSectionIdx === 0 ? 'Section 1: Paper-I' : 'Section 2: Paper-II'}
+                  </span>
+                )}
+
+                <span className="font-extrabold text-base sm:text-lg text-slate-900">
+                  Question {isCombinedMode ? (currentSectionIdx === 0 ? currentIdx + 1 : currentIdx - 49) : currentIdx + 1}
+                  <span className="text-xs sm:text-sm font-normal text-slate-500">
+                    {' '}(Overall: {currentIdx + 1} of {questions.length})
+                  </span>
                 </span>
 
                 {currentQ.unit && (
@@ -328,7 +411,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
                 )}
               </div>
 
-              <div className="text-xs font-medium text-slate-500">
+              <div className="text-xs font-medium text-slate-500 shrink-0">
                 Marks: <strong className="text-emerald-600">+{session.marks_per_correct}</strong>
                 {session.negative_marks_per_incorrect > 0 && (
                   <span> / <strong className="text-rose-600">-{session.negative_marks_per_incorrect}</strong></span>
@@ -387,7 +470,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               <button
                 onClick={handleClearAnswer}
                 disabled={currentQ.user_answer === null}
-                className="px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition"
+                className="px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 transition cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Clear Answer
@@ -395,7 +478,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
 
               <button
                 onClick={handleToggleReview}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition ${
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition cursor-pointer ${
                   currentQ.marked_for_review
                     ? 'bg-purple-600 text-white border-purple-700 shadow-sm'
                     : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
@@ -406,12 +489,12 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               </button>
             </div>
 
-            {/* Right buttons: Prev, Mark & Next, Save & Next */}
+            {/* Right buttons: Prev, Save & Next */}
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => goToQuestion(currentIdx - 1)}
                 disabled={isFirstQuestion}
-                className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition"
+                className="px-4 py-2 rounded-lg text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" /> Previous
               </button>
@@ -419,14 +502,14 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               {!isLastQuestion ? (
                 <button
                   onClick={handleSaveAndNext}
-                  className="px-5 py-2.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow transition"
+                  className="px-5 py-2.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow transition cursor-pointer"
                 >
                   Save & Next <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button
                   onClick={() => setShowSubmitModal(true)}
-                  className="px-5 py-2.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow transition"
+                  className="px-5 py-2.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow transition cursor-pointer"
                 >
                   <Check className="w-4 h-4" /> Finish & Submit
                 </button>
@@ -452,42 +535,82 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               </button>
             </div>
 
+            {/* If Combined Mode, show Section tabs inside Palette */}
+            {isCombinedMode && (
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg text-[11px] font-bold">
+                <button
+                  onClick={() => setPaletteSectionFilter('all')}
+                  className={`flex-1 py-1 rounded transition text-center ${
+                    paletteSectionFilter === 'all' ? 'bg-white shadow text-slate-900' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All (150)
+                </button>
+                <button
+                  onClick={() => setPaletteSectionFilter(0)}
+                  className={`flex-1 py-1 rounded transition text-center ${
+                    paletteSectionFilter === 0 ? 'bg-white shadow text-blue-700' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Sec 1 (50)
+                </button>
+                <button
+                  onClick={() => setPaletteSectionFilter(1)}
+                  className={`flex-1 py-1 rounded transition text-center ${
+                    paletteSectionFilter === 1 ? 'bg-white shadow text-indigo-700' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Sec 2 (100)
+                </button>
+              </div>
+            )}
+
             {/* Visual Status Legend */}
             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded bg-emerald-600 text-white font-bold text-[9px] flex items-center justify-center">
-                  {answeredCount}
+                  {overallStats.answered}
                 </span>
                 <span>Answered</span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded bg-rose-500 text-white font-bold text-[9px] flex items-center justify-center">
-                  {notAnsweredCount}
+                  {overallStats.notAnswered}
                 </span>
                 <span>Not Answered</span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded bg-purple-600 text-white font-bold text-[9px] flex items-center justify-center">
-                  {markedCount}
+                  {overallStats.marked}
                 </span>
                 <span>Marked Review</span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded bg-slate-200 text-slate-700 font-bold text-[9px] flex items-center justify-center border border-slate-300">
-                  {notVisitedCount}
+                  {overallStats.notVisited}
                 </span>
                 <span>Not Visited</span>
               </div>
             </div>
 
-            {/* 1..50 Button Grid */}
+            {/* Button Grid */}
             <div className="space-y-1">
-              <div className="text-[11px] font-semibold text-slate-500">Jump to Question:</div>
-              <div className="grid grid-cols-5 gap-2 max-h-[360px] overflow-y-auto pr-1">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                <span>Jump to Question:</span>
+                <span>{visiblePaletteQuestions.length} shown</span>
+              </div>
+
+              <div className="grid grid-cols-5 gap-1.5 max-h-[360px] overflow-y-auto pr-1">
                 {questions.map((q, idx) => {
+                  // Filter visibility
+                  if (isCombinedMode && paletteSectionFilter !== 'all') {
+                    if (paletteSectionFilter === 0 && idx >= 50) return null;
+                    if (paletteSectionFilter === 1 && idx < 50) return null;
+                  }
+
                   const isCurrent = idx === currentIdx;
                   const hasAnswer = q.user_answer !== null;
                   const isMarked = q.marked_for_review;
@@ -508,7 +631,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
                     <button
                       key={q.id}
                       onClick={() => goToQuestion(idx)}
-                      className={`h-9 rounded-lg font-bold text-xs flex items-center justify-center transition border ${bgClass} ${
+                      className={`h-8 rounded-lg font-bold text-xs flex items-center justify-center transition border ${bgClass} ${
                         isCurrent ? 'ring-2 ring-blue-500 ring-offset-2 scale-105 shadow-sm' : ''
                       }`}
                     >
@@ -529,67 +652,133 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               <Send className="w-3.5 h-3.5" /> Submit Examination
             </button>
             <p className="text-[10px] text-center text-slate-400">
-              Auto-saves every second. Safe against page reload.
+              Continuous auto-save active. Safe on reload.
             </p>
           </div>
         </aside>
       </div>
 
-      {/* Manual Submission Confirmation Modal (Test Safety Requirement 7) */}
+      {/* Manual Submission Confirmation Modal */}
       {showSubmitModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-scale-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-scale-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
                 <ShieldAlert className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-lg text-slate-900">Are you sure you want to submit?</h3>
+                <h3 className="font-bold text-lg text-slate-900">Confirm Exam Submission</h3>
                 <p className="text-xs text-slate-500">Please review your question response summary before finishing.</p>
               </div>
             </div>
 
-            {/* Summary statistics */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600 font-medium">Total Questions:</span>
-                <span className="font-bold text-slate-900">50</span>
+            {/* Summary statistics (Sectional if combined, single otherwise) */}
+            {isCombinedMode ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Section 1 */}
+                  <div className="bg-blue-50/70 rounded-xl p-3 border border-blue-200 text-xs space-y-1.5">
+                    <div className="font-bold text-blue-900 border-b border-blue-200 pb-1 flex items-center justify-between">
+                      <span>Section 1 (Paper-I)</span>
+                      <span>50 Qs</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-800">
+                      <span>Answered:</span>
+                      <strong>{s1Stats.answered}</strong>
+                    </div>
+                    <div className="flex justify-between text-rose-800">
+                      <span>Unanswered:</span>
+                      <strong>{50 - s1Stats.answered}</strong>
+                    </div>
+                    <div className="flex justify-between text-purple-800">
+                      <span>Marked:</span>
+                      <strong>{s1Stats.marked + s1Stats.markedAndAnswered}</strong>
+                    </div>
+                  </div>
+
+                  {/* Section 2 */}
+                  <div className="bg-indigo-50/70 rounded-xl p-3 border border-indigo-200 text-xs space-y-1.5">
+                    <div className="font-bold text-indigo-900 border-b border-indigo-200 pb-1 flex items-center justify-between">
+                      <span>Section 2 (Paper-II)</span>
+                      <span>100 Qs</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-800">
+                      <span>Answered:</span>
+                      <strong>{s2Stats.answered}</strong>
+                    </div>
+                    <div className="flex justify-between text-rose-800">
+                      <span>Unanswered:</span>
+                      <strong>{100 - s2Stats.answered}</strong>
+                    </div>
+                    <div className="flex justify-between text-purple-800">
+                      <span>Marked:</span>
+                      <strong>{s2Stats.marked + s2Stats.markedAndAnswered}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Overall Totals */}
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex justify-between font-bold text-slate-900">
+                    <span>Total Questions:</span>
+                    <span>150 Questions</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-700 font-semibold">
+                    <span>Total Answered:</span>
+                    <span>{overallStats.answered}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-700 font-semibold">
+                    <span>Total Unanswered:</span>
+                    <span>{150 - overallStats.answered}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-700 pt-1 border-t border-slate-200">
+                    <span>Time Remaining:</span>
+                    <span className="font-mono font-bold text-blue-600">{formatTime(remainingSeconds)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-emerald-700 font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle className="w-4 h-4 text-emerald-600" /> Answered Questions:
-                </span>
-                <span>{answeredCount}</span>
+            ) : (
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Total Questions:</span>
+                  <span className="font-bold text-slate-900">{questions.length}</span>
+                </div>
+                <div className="flex items-center justify-between text-emerald-700 font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" /> Answered Questions:
+                  </span>
+                  <span>{overallStats.answered}</span>
+                </div>
+                <div className="flex items-center justify-between text-rose-700 font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" /> Unanswered Questions:
+                  </span>
+                  <span>{questions.length - overallStats.answered}</span>
+                </div>
+                <div className="flex items-center justify-between text-purple-700 font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <Bookmark className="w-4 h-4 text-purple-600" /> Marked for Review:
+                  </span>
+                  <span>{overallStats.marked + overallStats.markedAndAnswered}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-700 pt-2 border-t border-slate-200">
+                  <span>Time Remaining:</span>
+                  <span className="font-mono font-bold text-blue-600">{formatTime(remainingSeconds)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-rose-700 font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-rose-600" /> Unanswered Questions:
-                </span>
-                <span>{questions.length - answeredCount}</span>
-              </div>
-              <div className="flex items-center justify-between text-purple-700 font-semibold">
-                <span className="flex items-center gap-1.5">
-                  <Bookmark className="w-4 h-4 text-purple-600" /> Marked for Review:
-                </span>
-                <span>{markedCount + markedAndAnsweredCount}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700 pt-2 border-t border-slate-200">
-                <span>Time Remaining:</span>
-                <span className="font-mono font-bold text-blue-600">{formatTime(remainingSeconds)}</span>
-              </div>
-            </div>
+            )}
 
             {/* Cancel | Submit Test */}
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowSubmitModal(false)}
-                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition"
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition cursor-pointer"
               >
                 Cancel & Resume Test
               </button>
               <button
                 onClick={handleManualSubmitConfirm}
-                className="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow"
+                className="px-5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow cursor-pointer"
               >
                 Yes, Submit Test
               </button>

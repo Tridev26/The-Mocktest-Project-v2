@@ -76,7 +76,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700">
             <div className="text-xs text-slate-400">Recent Score</div>
             <div className="text-2xl font-black text-white mt-1">
-              {latestScore} <span className="text-xs font-normal text-slate-400">/ 100</span>
+              {latestScore} <span className="text-xs font-normal text-slate-400">/ {activeAttempt?.max_score || 100}</span>
             </div>
             <div className="text-[11px] text-blue-400 mt-0.5">Latest test</div>
           </div>

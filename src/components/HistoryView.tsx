@@ -147,8 +147,30 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                     </td>
 
-                    <td className="py-4 px-4 font-semibold text-slate-900 max-w-xs truncate">
-                      {attempt.question_bank_name}
+                    <td className="py-4 px-4 font-semibold text-slate-900 max-w-xs">
+                      <div className="truncate">{attempt.question_bank_name}</div>
+                      <div className="mt-1">
+                        {attempt.paper_mode === 'paper1' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                            Paper-I (50 Qs)
+                          </span>
+                        )}
+                        {attempt.paper_mode === 'paper2' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                            Paper-II (100 Qs)
+                          </span>
+                        )}
+                        {attempt.paper_mode === 'paper1_paper2' && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                            Paper-I + II (150 Qs)
+                          </span>
+                        )}
+                        {!attempt.paper_mode && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                            Paper-I
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-4 px-3 text-center whitespace-nowrap">

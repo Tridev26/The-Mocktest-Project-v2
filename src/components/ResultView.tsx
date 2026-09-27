@@ -12,7 +12,8 @@ import {
   Award, 
   BookOpen,
   Calendar,
-  AlertCircle
+  Layers,
+  Sparkles
 } from 'lucide-react';
 import { TestAttempt } from '../types';
 import { formatDetailedTime } from '../utils/testEngine';
@@ -34,12 +35,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'analysis' | 'analytics'>('summary');
 
-  // Performance tier evaluation
+  // Performance tier evaluation based on percentage
   let performanceTier = 'Needs Preparation';
   let tierColor = 'text-rose-600';
   let tierBg = 'bg-rose-50 border-rose-200';
   if (attempt.percentage >= 70) {
-    performanceTier = 'JRF Qualified Standard';
+    performanceTier = 'JRF Qualified Standard (Distinction)';
     tierColor = 'text-emerald-700';
     tierBg = 'bg-emerald-50 border-emerald-200';
   } else if (attempt.percentage >= 55) {
@@ -47,7 +48,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
     tierColor = 'text-blue-700';
     tierBg = 'bg-blue-50 border-blue-200';
   } else if (attempt.percentage >= 40) {
-    performanceTier = 'Average Pass Threshold';
+    performanceTier = 'Pass Threshold Qualified';
     tierColor = 'text-amber-700';
     tierBg = 'bg-amber-50 border-amber-200';
   }
@@ -55,7 +56,10 @@ export const ResultView: React.FC<ResultViewProps> = ({
   // SVG Circular Gauge calculation
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (attempt.percentage / 100) * circumference;
+  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, attempt.percentage)) / 100) * circumference;
+
+  const isCombined = attempt.paper_mode === 'paper1_paper2';
+  const hasSections = Boolean(attempt.sections && attempt.sections.length >= 2);
 
   return (
     <div className="space-y-6 pb-12 max-w-6xl mx-auto">
@@ -63,7 +67,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
       <div className="flex items-center justify-between flex-wrap gap-3">
         <button
           onClick={onBackToDashboard}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-medium transition"
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 font-medium transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </button>
@@ -71,7 +75,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onRetakeTest(attempt.question_bank_id)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Start New Test
           </button>
@@ -82,7 +86,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
       <div className="bg-white rounded-xl p-1.5 border border-slate-200 shadow-sm flex items-center gap-1">
         <button
           onClick={() => setActiveTab('summary')}
-          className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition ${
+          className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer ${
             activeTab === 'summary'
               ? 'bg-slate-900 text-white shadow'
               : 'text-slate-600 hover:bg-slate-100'
@@ -93,7 +97,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
         <button
           onClick={() => setActiveTab('analysis')}
-          className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition ${
+          className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer ${
             activeTab === 'analysis'
               ? 'bg-slate-900 text-white shadow'
               : 'text-slate-600 hover:bg-slate-100'
@@ -104,7 +108,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition ${
+          className={`flex-1 py-2.5 px-4 rounded-lg font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer ${
             activeTab === 'analytics'
               ? 'bg-slate-900 text-white shadow'
               : 'text-slate-600 hover:bg-slate-100'
@@ -120,7 +124,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           {/* Main Score Hero Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-              {/* Circular Gauge Meter (Requirement 9 Performance Indicator) */}
+              {/* Circular Gauge Meter */}
               <div className="md:col-span-4 flex flex-col items-center justify-center text-center">
                 <div className="relative w-40 h-40 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 130 130">
@@ -168,11 +172,33 @@ export const ResultView: React.FC<ResultViewProps> = ({
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Completed on {new Date(attempt.completed_at).toLocaleString()}</span>
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 mt-1">
-                    {attempt.question_bank_name}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Official UGC-NET Paper I Mock Evaluation • 50 Questions
+
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <h2 className="text-2xl font-black text-slate-900">
+                      {attempt.question_bank_name}
+                    </h2>
+
+                    {attempt.paper_mode === 'paper1' && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                        Paper-I (1 Hour • 50 Qs)
+                      </span>
+                    )}
+                    {attempt.paper_mode === 'paper2' && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        Paper-II (2 Hours • 100 Qs)
+                      </span>
+                    )}
+                    {attempt.paper_mode === 'paper1_paper2' && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Paper-I + II Combined (3 Hours • 150 Qs)
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-500 mt-1">
+                    {attempt.paper_mode === 'paper1_paper2'
+                      ? 'Full UGC-NET Examination Simulation • Section 1 (Paper-I) + Section 2 (Paper-II)'
+                      : (attempt.paper_mode === 'paper2' ? 'UGC-NET Paper II Subject Specialization Examination' : 'UGC-NET Paper I General Aptitude Examination')}
                   </p>
                 </div>
 
@@ -243,6 +269,128 @@ export const ResultView: React.FC<ResultViewProps> = ({
             </div>
           </div>
 
+          {/* Sectional Scorecards for Combined Paper-I + Paper-II */}
+          {isCombined && hasSections && attempt.sections && (
+            <div className="space-y-3">
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-blue-600" />
+                Sectional Performance Breakdown:
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Section 1 Card */}
+                {attempt.sections[0] && (
+                  <div className="bg-white rounded-2xl p-6 border-2 border-blue-200/80 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
+                          Section 1
+                        </span>
+                        <h4 className="font-extrabold text-base text-slate-900">
+                          Paper-I (General Aptitude)
+                        </h4>
+                      </div>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
+                        {attempt.sections[0].total_questions} Questions
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-[11px] text-slate-500">Score</div>
+                        <div className="text-xl font-black text-slate-900 mt-0.5">
+                          {attempt.sections[0].score}
+                          <span className="text-[10px] font-normal text-slate-500"> / {attempt.sections[0].max_score}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-[11px] text-slate-500">Percentage</div>
+                        <div className="text-xl font-black text-blue-600 mt-0.5">
+                          {attempt.sections[0].percentage}%
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-[11px] text-slate-500">Accuracy</div>
+                        <div className="text-xl font-black text-emerald-600 mt-0.5">
+                          {attempt.sections[0].accuracy}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100">
+                      <span className="text-emerald-700 font-semibold">
+                        Correct: <strong>{attempt.sections[0].correct_count}</strong>
+                      </span>
+                      <span className="text-rose-700 font-semibold">
+                        Incorrect: <strong>{attempt.sections[0].incorrect_count}</strong>
+                      </span>
+                      <span className="text-slate-500">
+                        Skipped: <strong>{attempt.sections[0].unattempted_count}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section 2 Card */}
+                {attempt.sections[1] && (
+                  <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200/80 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                          Section 2
+                        </span>
+                        <h4 className="font-extrabold text-base text-slate-900">
+                          Paper-II (Subject Specialization)
+                        </h4>
+                      </div>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800">
+                        {attempt.sections[1].total_questions} Questions
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-[11px] text-slate-500">Score</div>
+                        <div className="text-xl font-black text-slate-900 mt-0.5">
+                          {attempt.sections[1].score}
+                          <span className="text-[10px] font-normal text-slate-500"> / {attempt.sections[1].max_score}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-[11px] text-slate-500">Percentage</div>
+                        <div className="text-xl font-black text-indigo-600 mt-0.5">
+                          {attempt.sections[1].percentage}%
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <div className="text-[11px] text-slate-500">Accuracy</div>
+                        <div className="text-xl font-black text-emerald-600 mt-0.5">
+                          {attempt.sections[1].accuracy}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100">
+                      <span className="text-emerald-700 font-semibold">
+                        Correct: <strong>{attempt.sections[1].correct_count}</strong>
+                      </span>
+                      <span className="text-rose-700 font-semibold">
+                        Incorrect: <strong>{attempt.sections[1].incorrect_count}</strong>
+                      </span>
+                      <span className="text-slate-500">
+                        Skipped: <strong>{attempt.sections[1].unattempted_count}</strong>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Quick Review Suggestions & Action Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
@@ -254,8 +402,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
                   <ListOrdered className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Review All 50 Questions</h3>
-                  <p className="text-xs text-slate-500">Inspect correct answers, your choices, and explanations</p>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Review All {attempt.total_questions} Questions
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Inspect correct answers, candidate choices, and full explanations
+                  </p>
                 </div>
               </div>
               <span className="text-blue-600 text-xs font-bold">Open →</span>
@@ -271,7 +423,9 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">Unit-Wise Performance</h3>
-                  <p className="text-xs text-slate-500">Analyze Teaching, Research, ICT, and Reasoning strengths</p>
+                  <p className="text-xs text-slate-500">
+                    Detailed diagnostic insights across all syllabus units
+                  </p>
                 </div>
               </div>
               <span className="text-indigo-600 text-xs font-bold">Open →</span>

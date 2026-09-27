@@ -232,7 +232,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <FileText className="w-5 h-5 text-blue-500" />
               </div>
               <div className="mt-2 text-2xl font-bold text-slate-900">{totalAttempts}</div>
-              <p className="text-xs text-slate-500 mt-1">Full 50-Q mock sessions</p>
+              <p className="text-xs text-slate-500 mt-1">Completed mock sessions</p>
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -240,8 +240,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Highest Score</span>
                 <Award className="w-5 h-5 text-amber-500" />
               </div>
-              <div className="mt-2 text-2xl font-bold text-slate-900">{bestScore} <span className="text-sm font-normal text-slate-500">/ 100</span></div>
-              <p className="text-xs text-slate-500 mt-1">Target: {formData.targetScore || 80}/100</p>
+              <div className="mt-2 text-2xl font-bold text-slate-900">{bestScore}</div>
+              <p className="text-xs text-slate-500 mt-1">Target Score: {formData.targetScore || 200}</p>
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -249,7 +249,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Average Score</span>
                 <TrendingUp className="w-5 h-5 text-emerald-500" />
               </div>
-              <div className="mt-2 text-2xl font-bold text-slate-900">{avgScore} <span className="text-sm font-normal text-slate-500">/ 100</span></div>
+              <div className="mt-2 text-2xl font-bold text-slate-900">{avgScore}</div>
               <p className="text-xs text-slate-500 mt-1">Across all attempts</p>
             </div>
 

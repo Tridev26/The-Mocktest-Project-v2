@@ -6,8 +6,7 @@ import {
   Bookmark, 
   HelpCircle, 
   Search, 
-  Filter, 
-  BookOpen, 
+  Layers, 
   Lightbulb 
 } from 'lucide-react';
 import { AttemptQuestion } from '../types';
@@ -20,7 +19,14 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
   attemptQuestions,
 }) => {
   const [filter, setFilter] = useState<'all' | 'correct' | 'incorrect' | 'unattempted' | 'review'>('all');
+  const [sectionFilter, setSectionFilter] = useState<'all' | 0 | 1>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const hasMultipleSections = attemptQuestions.some(q => q.section_index === 1 || q.paper_type === 'paper2') &&
+                             attemptQuestions.some(q => q.section_index === 0 || q.paper_type === 'paper1');
+
+  const s1Count = attemptQuestions.filter(q => q.section_index === 0 || q.paper_type === 'paper1' || q.question_order <= 50).length;
+  const s2Count = attemptQuestions.filter(q => q.section_index === 1 || q.paper_type === 'paper2' || q.question_order > 50).length;
 
   const correctCount = attemptQuestions.filter(q => q.is_correct).length;
   const incorrectCount = attemptQuestions.filter(q => q.user_answer !== null && !q.is_correct).length;
@@ -28,6 +34,13 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
   const reviewCount = attemptQuestions.filter(q => q.marked_for_review).length;
 
   const filteredQuestions = attemptQuestions.filter(q => {
+    // Section filter
+    if (hasMultipleSections && sectionFilter !== 'all') {
+      const isSec1 = q.section_index === 0 || q.paper_type === 'paper1' || q.question_order <= 50;
+      if (sectionFilter === 0 && !isSec1) return false;
+      if (sectionFilter === 1 && isSec1) return false;
+    }
+
     // Status filter
     if (filter === 'correct' && !q.is_correct) return false;
     if (filter === 'incorrect' && (q.user_answer === null || q.is_correct)) return false;
@@ -49,22 +62,61 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
     <div className="space-y-6">
       {/* Top Filter and Search Bar */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
+        {/* Section Tabs if Combined Mode */}
+        {hasMultipleSections && (
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-100 flex-wrap">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mr-1">
+              <Layers className="w-3.5 h-3.5 text-blue-600" /> Filter Section:
+            </span>
+            <button
+              onClick={() => setSectionFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                sectionFilter === 'all'
+                  ? 'bg-slate-900 text-white shadow'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Sections ({attemptQuestions.length})
+            </button>
+            <button
+              onClick={() => setSectionFilter(0)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                sectionFilter === 0
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
+            >
+              Section 1: Paper-I ({s1Count})
+            </button>
+            <button
+              onClick={() => setSectionFilter(1)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                sectionFilter === 1
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+              }`}
+            >
+              Section 2: Paper-II ({s2Count})
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
             <button
               onClick={() => setFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 filter === 'all'
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              All Questions ({attemptQuestions.length})
+              All Statuses ({attemptQuestions.length})
             </button>
 
             <button
               onClick={() => setFilter('correct')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 cursor-pointer ${
                 filter === 'correct'
                   ? 'bg-emerald-600 text-white'
                   : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -75,7 +127,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
 
             <button
               onClick={() => setFilter('incorrect')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 cursor-pointer ${
                 filter === 'incorrect'
                   ? 'bg-rose-600 text-white'
                   : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
@@ -86,7 +138,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
 
             <button
               onClick={() => setFilter('unattempted')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 cursor-pointer ${
                 filter === 'unattempted'
                   ? 'bg-slate-700 text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -97,7 +149,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
 
             <button
               onClick={() => setFilter('review')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1 cursor-pointer ${
                 filter === 'review'
                   ? 'bg-purple-600 text-white'
                   : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
@@ -132,6 +184,7 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
             const hasAnswer = q.user_answer !== null;
             const isCorrect = q.is_correct;
             const isUnattempted = !hasAnswer;
+            const isSec2 = q.section_index === 1 || q.paper_type === 'paper2' || q.question_order > 50;
 
             return (
               <div
@@ -140,7 +193,15 @@ export const QuestionAnalysis: React.FC<QuestionAnalysisProps> = ({
               >
                 {/* Header row */}
                 <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {hasMultipleSections && (
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded text-white ${
+                        isSec2 ? 'bg-indigo-600' : 'bg-blue-600'
+                      }`}>
+                        {isSec2 ? 'Paper-II' : 'Paper-I'}
+                      </span>
+                    )}
+
                     <span className="font-bold text-sm text-slate-900">
                       Question {q.question_order}
                     </span>

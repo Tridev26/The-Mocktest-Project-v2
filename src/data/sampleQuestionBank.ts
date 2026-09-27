@@ -878,4 +878,7 @@ export const DEFAULT_QUESTION_BANK: QuestionBank = {
   question_count: SAMPLE_QUESTIONS.length,
   questions: SAMPLE_QUESTIONS,
   is_default: true,
+  paper_type: 'paper1',
+  subject: 'General Paper I (Teaching & Research Aptitude)',
 };
+
