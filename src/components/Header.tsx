@@ -273,9 +273,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Log out of Google Account</span>
                       </button>
-                    ) : (
-                
-                    )}
+                    ) 
                   </div>
                 </div>
               )}
@@ -291,7 +289,7 @@ export const Header: React.FC<HeaderProps> = ({
               <PlayCircle className="w-3.5 h-3.5" />
               Start Test
             </button>
-            
+
           </div>
         </div>
 
