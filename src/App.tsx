@@ -237,28 +237,6 @@ export default function App() {
     });
   };
 
-  const handleLogout = () => {
-    if (confirm('Log out of your Google Account? You can sign back in anytime.')) {
-      const loggedOutUser: AuthUser = {
-        id: '',
-        name: 'Guest Candidate',
-        email: '',
-        isLoggedIn: false,
-        provider: 'google',
-      };
-      setAuthUser(loggedOutUser);
-      saveAuthUser(loggedOutUser);
-      setUserProfile(prev => {
-        const updated = {
-          ...prev,
-          name: 'Guest Candidate',
-          email: '',
-        };
-        saveUserProfile(updated);
-        return updated;
-      });
-    }
-  };
 
   const handleSelectTab = (tab: string, subTab?: string) => {
     if (tab === 'start-test') {
