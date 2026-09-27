@@ -1,0 +1,407 @@
+================================================================================
+          UGC-NET-MOCK TEST ENGINE V.2 — APPLICATION SPECIFICATION & DOCUMENTATION
+================================================================================
+Generated for: Model Evaluation, Code Audits, and Benchmark Testing
+Target Exam: UGC-NET / JRF NTA Computer-Based Test (CBT) Simulation
+             - Paper I: General Paper on Teaching & Research Aptitude
+             - Paper II: Subject Specialization (Computer Science & Applications)
+             - Combined Paper I + Paper II (Full 3-Hour NTA Examination Simulation)
+Release: Version 2.2 (Multi-Paper Full-Stack SPA)
+Date: 2026-09-27
+
+--------------------------------------------------------------------------------
+1. EXECUTIVE SUMMARY & OBJECTIVES
+--------------------------------------------------------------------------------
+UGC-NET-MOCK TEST (MOCK ENGINE V.2) is a specialized, production-grade examination
+simulation web application designed for aspirants preparing for the National
+Eligibility Test (UGC-NET / JRF) conducted by the National Testing Agency (NTA).
+
+Key Design Objectives:
+1. High-Fidelity NTA Interface: Replicates the authentic computer-based testing (CBT)
+   experience with an interactive question palette, color-coded question statuses,
+   multi-hour countdown timer with auto-submit, and question review markings.
+2. Official Dual-Paper Exam Architecture:
+   a) Paper-I Only: 1 Hour (60 minutes), 1 Section, 50 questions, 100 maximum marks.
+   b) Paper-II Only: 2 Hours (120 minutes), 1 Section, 100 questions, 200 maximum marks.
+   c) Paper-I + Paper-II Combined: 3 Hours (180 minutes), 2 Sections, 150 questions
+      (Section 1: 50 Qs for Paper-I; Section 2: 100 Qs for Paper-II), 300 maximum marks.
+3. Dynamic Two-Section CBT Navigation:
+   - Sticky Section Navigation Bar for Paper-I+II exams with live answered counters
+     (e.g., "38/50 Answered" and "74/100 Answered") and 1-click section jumping.
+   - Sectional Palette Filters ("All Questions", "Section 1: Paper-I", "Section 2: Paper-II").
+   - Two-section submission confirmation modal detailing counts per section.
+4. Comprehensive Question Bank Pipeline:
+   - Default Paper-I Question Bank with 50 authentic questions across 10 general units.
+   - Default Paper-II Question Bank with 100 authentic questions across all 10 units
+     of UGC-NET Computer Science & Applications (Subject 87).
+   - Ingestion pipeline supporting CSV, JSON, and XLSX (SheetJS) formats with schema
+     validation, paper-type tagging, and eligibility thresholds (>=50 for P1, >=100 for P2).
+5. Comprehensive Sectional Evaluation & Performance Analytics:
+   - Side-by-side sectional scorecards for combined exams alongside overall score.
+   - Unit-level strength/weakness analysis across all units of both papers.
+   - Question analysis view with section filter tabs and detailed answer explanations.
+6. Google Identity Integration: Seamless Google authentication system with login/logout
+   support, candidate profile management, target milestone tracking, and local
+   storage persistence with crash recovery fail-safes.
+
+--------------------------------------------------------------------------------
+2. TECHNICAL STACK & ARCHITECTURE
+--------------------------------------------------------------------------------
+- Framework: React 18+ (Functional Components with Hooks)
+- Language: TypeScript (Strict Type Safety)
+- Build System: Vite
+- Styling: Tailwind CSS (Modern responsive design, dark/light theme accents)
+- Iconography: Lucide-React
+- Data Parsing: XLSX (SheetJS) for spreadsheet import & native JSON/CSV parsers
+- Persistence: Browser LocalStorage with schema versioning and session fail-safes
+- State Management: React useState / useEffect / custom local storage utilities
+
+Architecture Style:
+- Single Page Application (SPA) with tab-based navigation routing:
+  * 'dashboard': Main overview, multi-paper quick launchers, and attempt summary
+  * 'start-test': Multi-paper configuration, bank selection, and rules verification
+  * 'exam': Fullscreen CBT examination mode (focus mode with NTA section navigation)
+  * 'result': Post-submission scorecard with sectional breakdown & question review
+  * 'profile': Unified Candidate Hub containing:
+      - Profile Overview (Google account status, target score goal, personal details)
+      - Question Banks Management (Paper-I & Paper-II filtering & uploads)
+      - Test Attempt History (with Paper Mode indicators)
+      - Unit Performance Analytics (dynamic score denominators)
+      - Admin Settings (marking scheme & manual question builder)
+
+--------------------------------------------------------------------------------
+3. CORE SYSTEM MODULES & SPECIFICATIONS
+--------------------------------------------------------------------------------
+
+3.1 Paper Selection Modes & Exam Configurations
+--------------------------------------------------------------------------------
+The engine supports three distinct, fully compliant NTA examination modes:
+
++----------------------------+----------+-----------+------------+----------+---------------+
+| Mode Key                   | Duration | Questions | Max Marks  | Sections | Section Names |
++----------------------------+----------+-----------+------------+----------+---------------+
+| 'paper1'                   | 60 min   | 50 Qs     | 100 Marks  | 1        | Sec 1: Paper-I|
+| (Paper-I Only)             | (1 Hour) |           | (+2/Q, -0) |          | (General)     |
++----------------------------+----------+-----------+------------+----------+---------------+
+| 'paper2'                   | 120 min  | 100 Qs    | 200 Marks  | 1        | Sec 1:Paper-II|
+| (Paper-II Only)            | (2 Hours)|           | (+2/Q, -0) |          | (Subject)     |
++----------------------------+----------+-----------+------------+----------+---------------+
+| 'paper1_paper2'            | 180 min  | 150 Qs    | 300 Marks  | 2        | Sec 1: Paper-I|
+| (Combined Paper I + II)    | (3 Hours)| (50 + 100)| (+2/Q, -0) |          | Sec 2:Paper-II|
++----------------------------+----------+-----------+------------+----------+---------------+
+
+Mode Details Mapping (`PAPER_MODE_DETAILS`):
+- `paper1`:
+  * Title: "Paper-I Only"
+  * Subtitle: "General Paper on Teaching & Research Aptitude"
+  * Duration: 60 minutes (3600 seconds)
+  * Questions: 50
+  * Max Marks: 100
+  * Sections: 1
+- `paper2`:
+  * Title: "Paper-II Only"
+  * Subtitle: "Subject Specific Comprehensive Paper"
+  * Duration: 120 minutes (7200 seconds)
+  * Questions: 100
+  * Max Marks: 200
+  * Sections: 1
+- `paper1_paper2`:
+  * Title: "Paper-I + Paper-II Combined"
+  * Subtitle: "Full NTA Mock Simulation (Two Sections)"
+  * Duration: 180 minutes (10800 seconds)
+  * Questions: 150 (Section 1: 50, Section 2: 100)
+  * Max Marks: 300
+  * Sections: 2
+
+3.2 Examination Engine & CBT Interface (src/components/ExamInterface.tsx)
+--------------------------------------------------------------------------------
+- Test Generation (`generatePaperModeQuestions` in `src/utils/testEngine.ts`):
+  * Paper-I Mode: Samples 50 questions from selected Paper-I bank.
+  * Paper-II Mode: Samples 100 questions from selected Paper-II bank.
+  * Combined Mode: Samples 50 questions from Paper-I bank (tagged Section 1, index 0..49)
+    and 100 questions from Paper-II bank (tagged Section 2, index 50..149).
+- Two-Section NTA Navigation Bar:
+  * Displayed prominently above the question card in `paper1_paper2` mode.
+  * Section 1 Tab: "Section 1: Paper-I (1-50)" with live answered count.
+  * Section 2 Tab: "Section 2: Paper-II (51-150)" with live answered count.
+  * Allows free switching between sections without restriction, matching authentic NTA CBT.
+- Real-Time Multi-Hour Exam Clock:
+  * Handles 1-hour, 2-hour, and 3-hour durations driven by a background setInterval.
+  * Multi-stage progressive warning alerts:
+    - 30 minutes remaining: Info notice
+    - 15 minutes remaining: Amber caution
+    - 5 minutes remaining: Orange alert
+    - 1 minute remaining: Red pulsing warning
+  * Formatted using `formatTime` (HH:MM:SS) and `formatDetailedTime` (Xh Ym Zs).
+  * Auto-submission upon clock expiry guarantees zero response loss.
+- Authentic NTA Question Palette:
+  * Interactive matrix (50, 100, or 150 question cells) with official color coding:
+    - Silver / Grey: Not Visited
+    - Red / Rose: Visited, Not Answered
+    - Emerald / Green: Answered
+    - Purple / Indigo: Marked for Review (Unanswered)
+    - Blue / Purple with Green dot: Answered & Marked for Review
+  * Section Filter Tabs: "All", "Section 1", "Section 2" for focused navigation.
+  * Question Status Filter Toggles: Filter by Answered, Not Answered, Marked, Not Visited.
+- Sectional Submission Modal:
+  * Displays sectional breakdown summary table before final confirmation:
+    - Section 1: Paper-I (Answered, Not Answered, Marked for Review, Not Visited)
+    - Section 2: Paper-II (Answered, Not Answered, Marked for Review, Not Visited)
+    - Total Overview
+- Session Crash Recovery:
+  * Current state (active section tab, current question index, answers, time spent per
+    question, remaining seconds) continuously synced to LocalStorage.
+  * Page reloads or accidental browser exits prompt 1-click test resumption.
+
+3.3 Scoring & Evaluation Engine (src/utils/testEngine.ts)
+--------------------------------------------------------------------------------
+- Sectional Evaluation (`evaluateTest`):
+  * Computes overall score, percentage, accuracy, and counts.
+  * For combined mode (`paper1_paper2`), generates `SectionSummary[]`:
+    - Section 1: Paper-I (50 questions, max score 100, accuracy, correct/incorrect)
+    - Section 2: Paper-II (100 questions, max score 200, accuracy, correct/incorrect)
+- Unit-Level Aggregation:
+  * Paper-I Units (1 to 10):
+    1. Teaching Aptitude
+    2. Research Aptitude
+    3. Reading Comprehension
+    4. Communication
+    5. Mathematical Reasoning & Aptitude
+    6. Logical Reasoning
+    7. Data Interpretation
+    8. Information & Communication Technology (ICT)
+    9. People, Development & Environment
+    10. Higher Education System
+  * Paper-II Units (Computer Science & Applications - Subject 87):
+    1. Discrete Structures and Optimization
+    2. Computer System Architecture
+    3. Programming Languages and Computer Graphics
+    4. Database Management Systems
+    5. System Software and Operating System
+    6. Software Engineering
+    7. Data Structures and Algorithms
+    8. Theory of Computation and Compilers
+    9. Data Communication and Computer Networks
+    10. Artificial Intelligence (AI)
+
+3.4 Results & Question Analysis Views (src/components/ResultView.tsx, QuestionAnalysis.tsx)
+--------------------------------------------------------------------------------
+- Dynamic Scorecards:
+  * Dynamic denominator: /100 (Paper-I), /200 (Paper-II), or /300 (Combined).
+  * Paper Mode badge on header and attempt summary.
+- Side-by-Side Sectional Scorecards:
+  * When `sections` summary exists, renders side-by-side cards comparing Paper-I vs Paper-II
+    performance (Score, Accuracy %, Correct/Incorrect, Time Used).
+- Filterable Question-by-Question Review:
+  * Section Filter buttons: "All Questions", "Section 1: Paper-I", "Section 2: Paper-II".
+  * Status Filter buttons: "All", "Correct", "Incorrect", "Unattempted", "Marked for Review".
+  * Question cards with Section Badges ("Paper-I" vs "Paper-II"), user choice vs correct
+    choice highlighting, and comprehensive explanations.
+
+3.5 Dashboard & Quick Launchers (src/components/Dashboard.tsx)
+--------------------------------------------------------------------------------
+- Paper Mode Selector inside the primary Quick Launcher banner.
+- 3 Quick Launch Action Cards:
+  * Option A: Paper-I Only (60m | 50 Qs | 100 Marks)
+  * Option B: Paper-II Only (120m | 100 Qs | 200 Marks)
+  * Option C: Paper-I + Paper-II Combined (180m | 150 Qs | 300 Marks)
+- Unified Performance Summary container displaying 7 dimensions with dynamic denominators.
+- Recent Attempts table with Paper Mode badges.
+
+3.6 Question Bank Management (src/components/QuestionBankView.tsx, ExcelArchiveUploader.tsx)
+--------------------------------------------------------------------------------
+- Question Banks filtered by: "All Banks", "Paper-I (General)", "Paper-II (Subject)".
+- Question Bank Creation & Ingestion:
+  * Paper Type tag: 'paper1' | 'paper2'.
+  * Subject Specialization name for Paper-II banks.
+  * Minimum questions eligibility check:
+    - Paper-I banks require >= 50 questions to be eligible for mock exams.
+    - Paper-II banks require >= 100 questions to be eligible for mock exams.
+- Excel Archive Ingestion Pipeline:
+  * Supports generating and downloading pre-formatted templates for Paper-I and Paper-II.
+  * Step 1 metadata form allows designating archive as Paper-I or Paper-II with subject.
+  * Auto-tags imported questions with the selected paper type.
+
+--------------------------------------------------------------------------------
+4. DATA CONTRACTS & TYPES (TypeScript)
+--------------------------------------------------------------------------------
+
+```typescript
+export type PaperType = 'paper1' | 'paper2';
+
+export type TestPaperMode = 'paper1' | 'paper2' | 'paper1_paper2';
+
+export interface QuestionOption {
+  key: 'A' | 'B' | 'C' | 'D';
+  text: string;
+}
+
+export interface Question {
+  id: string;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  explanation?: string;
+  unit?: string;
+  topic?: string;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  paper_type?: PaperType;
+}
+
+export interface QuestionBank {
+  id: string;
+  name: string;
+  description?: string;
+  uploaded_by: string;
+  created_at: string;
+  question_count: number;
+  questions: Question[];
+  is_default?: boolean;
+  paper_type?: PaperType;
+  subject?: string;
+}
+
+export interface AttemptQuestion {
+  id: string;
+  question_id: string;
+  question_order: number;
+  question_text: string;
+  options: QuestionOption[];
+  user_answer: 'A' | 'B' | 'C' | 'D' | null;
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  is_correct: boolean;
+  time_spent: number; // in seconds
+  marked_for_review: boolean;
+  visited: boolean;
+  explanation?: string;
+  unit?: string;
+  topic?: string;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  paper_type?: PaperType;
+  section_index?: number; // 0 for Section 1, 1 for Section 2
+  section_name?: string;
+}
+
+export interface SectionSummary {
+  section_index: number;
+  name: string;
+  paper_type: PaperType;
+  total_questions: number;
+  score: number;
+  max_score: number;
+  percentage: number;
+  accuracy: number;
+  correct_count: number;
+  incorrect_count: number;
+  unattempted_count: number;
+  time_spent_seconds?: number;
+}
+
+export interface TestAttempt {
+  id: string;
+  user_id: string;
+  paper_mode?: TestPaperMode;
+  question_bank_id: string;
+  question_bank_name: string;
+  paper2_bank_id?: string;
+  paper2_bank_name?: string;
+  started_at: string;
+  completed_at: string;
+  total_questions: number; // 50, 100, or 150
+  marks_per_correct: number;
+  negative_marks_per_incorrect: number;
+  score: number;
+  max_score: number; // 100, 200, or 300
+  percentage: number;
+  accuracy: number;
+  correct_count: number;
+  incorrect_count: number;
+  unattempted_count: number;
+  time_used_seconds: number;
+  attempt_questions: AttemptQuestion[];
+  sections?: SectionSummary[];
+}
+
+export interface ActiveTestSession {
+  id: string;
+  paper_mode: TestPaperMode;
+  question_bank_id: string;
+  question_bank_name: string;
+  paper2_bank_id?: string;
+  paper2_bank_name?: string;
+  started_at: number; // timestamp ms
+  duration_seconds: number; // 3600, 7200, or 10800
+  remaining_seconds: number;
+  current_index: number;
+  attempt_questions: AttemptQuestion[];
+  marks_per_correct: number;
+  negative_marks_per_incorrect: number;
+  last_tick_timestamp: number;
+  active_section_tab?: number; // 0 or 1
+}
+
+export interface PaperModeDetails {
+  mode: TestPaperMode;
+  title: string;
+  subtitle: string;
+  durationMinutes: number;
+  durationLabel: string;
+  questionCount: number;
+  marksPerQuestion: number;
+  maxMarks: number;
+  sectionsCount: number;
+  sectionNames: string[];
+}
+```
+
+--------------------------------------------------------------------------------
+5. LOCAL STORAGE SCHEMAS & FAIL-SAFES
+--------------------------------------------------------------------------------
+Keys utilized:
+- 'ugc_net_question_banks_v1': Serialized list of QuestionBank objects (contains both
+  `DEFAULT_QUESTION_BANK` and `DEFAULT_PAPER2_QUESTION_BANK`).
+- 'ugc_net_test_attempts_v1': Historical TestAttempt logs with paper mode & sections.
+- 'ugc_net_active_session_v1': Snapshot of ongoing exam session with section data.
+- 'ugc_net_marking_scheme_v1': System scoring rules (positive marks, negative marks).
+- 'ugc_net_user_profile_v1': Candidate personal details and target score milestone.
+- 'ugc_net_auth_user_v1': Active Google authenticated session token/user profile.
+
+Fail-safe behaviors:
+- Automatically loads both default Paper-I and Paper-II question banks if storage is unseeded.
+- Multi-hour countdown resumes safely upon browser restart without timer truncation.
+- Resilient JSON parse routines prevent app crashes on malformed data.
+
+--------------------------------------------------------------------------------
+6. BENCHMARK & EVALUATION CRITERIA FOR AI MODELS
+--------------------------------------------------------------------------------
+When evaluating other LLMs or code engines against this implementation, test for:
+
+1. Dual-Paper Exam Generation:
+   - Does selecting Paper-I generate exactly 50 questions with 60m countdown?
+   - Does selecting Paper-II generate exactly 100 questions with 120m countdown?
+   - Does selecting Combined generate exactly 150 questions across 2 sections with 180m countdown?
+
+2. Two-Section NTA CBT Navigation:
+   - In combined mode, does the section bar display Section 1 (Paper-I) and Section 2 (Paper-II)?
+   - Does clicking Section 2 instantly jump to Question 51?
+   - Does the question palette update section filter tabs accordingly?
+
+3. Scoring & Sectional Accuracy:
+   - Does Paper-I score calculate out of 100?
+   - Does Paper-II score calculate out of 200?
+   - Does Combined score calculate out of 300 with accurate sectional breakdowns?
+
+4. Multi-Hour Timer Robustness:
+   - Does the timer format accurately as `HH:MM:SS` (e.g. `02:59:45`)?
+   - Are visual warning thresholds triggered progressively (30m, 15m, 5m, 1m)?
+
+5. Offline & State Persistence:
+   - Are Paper-I and Paper-II question banks available immediately offline?
+   - Does test recovery preserve active section and questions without loss?
+
+================================================================================
+                              END OF SPECIFICATION
+================================================================================
