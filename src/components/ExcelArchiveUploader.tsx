@@ -47,7 +47,7 @@ const REQUIRED_HEADERS = [
 
 export const ExcelArchiveUploader: React.FC<ExcelArchiveUploaderProps> = ({
   onSuccessUpload,
-  defaultUploaderName = 'Tridev Ruidas',
+  defaultUploaderName = 'Guest Candidate',
 }) => {
   // Form fields
   const [bankName, setBankName] = useState('');
