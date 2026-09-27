@@ -39,7 +39,7 @@ import { StartTestSetup } from './components/StartTestSetup';
 import { ExamInterface } from './components/ExamInterface';
 import { ResultView } from './components/ResultView';
 import { ProfileView, ProfileSubTab } from './components/ProfileView';
-import { GoogleAuthModal } from './components/GoogleAuthModal';
+
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
