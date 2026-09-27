@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from './utils/supabaseClient'; // ADDED: Live database connection
+import { supabase } from './utils/supabaseClient'; 
 import { 
   saveQuestionBanks, 
   loadTestAttempts, 
@@ -18,9 +18,7 @@ import {
   saveMarkingScheme,
   resetToDefaultBanks,
   loadUserProfile,
-  saveUserProfile,
-  loadAuthUser,
-  saveAuthUser
+  saveUserProfile
 } from './utils/storage';
 import { 
   QuestionBank, 
@@ -28,8 +26,7 @@ import {
   ActiveTestSession, 
   MarkingSchemeConfig, 
   Question,
-  UserProfile,
-  AuthUser
+  UserProfile
 } from './types';
 import { generateTestQuestions, evaluateTest } from './utils/testEngine';
 
@@ -40,30 +37,24 @@ import { ExamInterface } from './components/ExamInterface';
 import { ResultView } from './components/ResultView';
 import { ProfileView, ProfileSubTab } from './components/ProfileView';
 
-
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [profileSubTab, setProfileSubTab] = useState<ProfileSubTab>('overview');
   
-  // CHANGED: Start with an empty list instead of local storage
   const [questionBanks, setQuestionBanks] = useState<any[]>([]); 
-  
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>(() => loadTestAttempts());
   const [activeSession, setActiveSession] = useState<ActiveTestSession | null>(() => loadActiveTestSession());
   const [markingScheme, setMarkingScheme] = useState<MarkingSchemeConfig>(() => loadMarkingScheme());
   const [userProfile, setUserProfile] = useState<UserProfile>(() => loadUserProfile());
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => loadAuthUser());
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   const [selectedAttemptForReview, setSelectedAttemptForReview] = useState<TestAttempt | null>(null);
   const [targetBankIdForSetup, setTargetBankIdForSetup] = useState<string | undefined>(undefined);
 
-  // ADDED: Fetch globally from Supabase on app load
   useEffect(() => {
     const fetchLiveDatabase = async () => {
       const { data, error } = await supabase
         .from('question_banks')
-        .select('*, questions(*)') // Pulls the banks AND their nested 50 questions
+        .select('*, questions(*)') 
         .order('created_at', { ascending: false });
 
       if (data) {
@@ -76,7 +67,6 @@ export default function App() {
     fetchLiveDatabase();
   }, []);
 
-  // Crash recovery / Reload detection
   useEffect(() => {
     if (activeSession) {
       if (activeSession.remaining_seconds <= 0) {
@@ -141,10 +131,8 @@ export default function App() {
 
     saveTestAttempt(completedAttempt);
     setTestAttempts(prev => [completedAttempt, ...prev.filter(a => a.id !== completedAttempt.id)]);
-
     clearActiveTestSession();
     setActiveSession(null);
-
     setSelectedAttemptForReview(completedAttempt);
     setCurrentTab('result');
   };
@@ -222,22 +210,6 @@ export default function App() {
     saveUserProfile(updated);
   };
 
-  const handleLoginSuccess = (user: AuthUser) => {
-    setAuthUser(user);
-    saveAuthUser(user);
-    setUserProfile(prev => {
-      const updated = {
-        ...prev,
-        name: user.name,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-      };
-      saveUserProfile(updated);
-      return updated;
-    });
-  };
-
-
   const handleSelectTab = (tab: string, subTab?: string) => {
     if (tab === 'start-test') {
       setTargetBankIdForSetup(undefined);
@@ -267,11 +239,7 @@ export default function App() {
           onResumeActiveTest={() => setCurrentTab('exam')}
           onDiscardActiveTest={handleDiscardActiveTest}
           candidateName={userProfile.name}
-          candidateEmail={authUser?.email || userProfile.email}
           activeProfileSubTab={profileSubTab}
-          isLoggedIn={authUser?.isLoggedIn ?? false}
-          onOpenLoginModal={() => setIsLoginModalOpen(true)}
-          onLogout={handleLogout}
         />
       )}
 
@@ -346,7 +314,6 @@ export default function App() {
           />
         )}
       </main>
-
     </div>
   );
 }

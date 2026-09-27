@@ -51,9 +51,7 @@ interface ProfileViewProps {
   onAddQuestionToBank: (bankId: string, question: Question) => void;
   onRestoreDefaultBank: () => void;
   selectedAttemptForReview?: TestAttempt | null;
-  isLoggedIn?: boolean;
-  onOpenLoginModal?: () => void;
-  onLogout?: () => void;
+
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -74,9 +72,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onAddQuestionToBank,
   onRestoreDefaultBank,
   selectedAttemptForReview,
-  isLoggedIn = true,
-  onOpenLoginModal,
-  onLogout,
+  
 }) => {
   const [localSubTab, setLocalSubTab] = useState<ProfileSubTab>(activeSubTab);
   const currentTab = onChangeSubTab ? activeSubTab : localSubTab;
