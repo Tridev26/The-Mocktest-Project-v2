@@ -365,20 +365,10 @@ export default function App() {
             onAddQuestionToBank={handleAddQuestionToBank}
             onRestoreDefaultBank={handleRestoreDefaultBank}
             selectedAttemptForReview={selectedAttemptForReview}
-            isLoggedIn={authUser?.isLoggedIn ?? false}
-            onOpenLoginModal={() => setIsLoginModalOpen(true)}
-            onLogout={handleLogout}
           />
         )}
       </main>
 
-      <GoogleAuthModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onSuccess={handleLoginSuccess}
-        defaultEmail={userProfile.email || 'TridevRuidas@gmail.com'}
-        defaultName={userProfile.name || 'Tridev Ruidas'}
-      />
     </div>
   );
 }

@@ -274,16 +274,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>Log out of Google Account</span>
                       </button>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          onOpenLoginModal?.();
-                        }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 transition font-medium"
-                      >
-                        <LogIn className="w-3.5 h-3.5" />
-                        <span>Log in with Google</span>
-                      </button>
+                
                     )}
                   </div>
                 </div>
@@ -301,30 +292,6 @@ export const Header: React.FC<HeaderProps> = ({
               Start Test
             </button>
             
-            {isLoggedIn ? (
-              <button
-                onClick={() => onSelectTab('profile', 'overview')}
-                className={`text-xs font-semibold px-2.5 py-1.5 rounded flex items-center gap-1.5 transition ${
-                  isProfileActive
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700'
-                }`}
-                title="Candidate Profile"
-              >
-                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center text-[8px] font-bold text-white">
-                  {getInitials(candidateName)}
-                </div>
-                <span>Profile</span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenLoginModal}
-                className="bg-white text-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded flex items-center gap-1.5 shadow"
-              >
-                <GoogleLogo className="w-3.5 h-3.5" />
-                <span>Log In</span>
-              </button>
-            )}
           </div>
         </div>
 
