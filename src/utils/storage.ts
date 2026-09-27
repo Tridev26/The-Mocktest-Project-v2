@@ -12,16 +12,15 @@ const STORAGE_KEYS = {
 
 export const DEFAULT_AUTH_USER: AuthUser = {
   id: 'usr-google-88231',
-  name: 'Tridev Ruidas',
-  email: 'TridevRuidas@gmail.com',
+  name: 'Guest Candidate',
+  email: 'guest@gmail.com',
   isLoggedIn: true,
-  provider: 'google',
   loginTimestamp: 1774540800000,
 };
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
-  name: 'Tridev Ruidas',
-  email: 'TridevRuidas@gmail.com',
+  name: 'Guest Candidate',
+  email: 'guest@gmail.com',
   rollNumber: 'NET-2026-08429',
   targetExam: 'UGC-NET Paper I (Assistant Professor / JRF)',
   category: 'General',
