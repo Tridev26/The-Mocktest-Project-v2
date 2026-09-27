@@ -259,22 +259,7 @@ export const Header: React.FC<HeaderProps> = ({
                       );
                     })}
                   </div>
-
-                  {/* Google Login / Logout Option in Dropdown */}
-                  <div className="pt-1.5 border-t border-slate-800 mt-1">
-                    {isLoggedIn ? (
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          onLogout?.();
-                        }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition font-medium"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Log out of Google Account</span>
-                      </button>
-                    ) 
-                  </div>
+                  
                 </div>
               )}
             </div>
