@@ -316,28 +316,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Analytics
           </button>
-          <button
-            onClick={() => onSelectTab('profile', 'admin')}
-            className={`px-3 py-1.5 rounded whitespace-nowrap ${isProfileActive && activeProfileSubTab === 'admin' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
-          >
-            Admin
-          </button>
-          {isLoggedIn ? (
-            <button
-              onClick={onLogout}
-              className="px-3 py-1.5 rounded whitespace-nowrap text-rose-400 hover:text-rose-300"
-            >
-              Log Out
-            </button>
-          ) : (
-            <button
-              onClick={onOpenLoginModal}
-              className="px-3 py-1.5 rounded whitespace-nowrap text-blue-400 font-semibold"
-            >
-              Sign In
-            </button>
-          )}
-        </div>
+          
       </div>
     </header>
   );
