@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './utils/supabaseClient'; 
 import { 
   loadQuestionBanks,
@@ -356,6 +357,7 @@ export default function App() {
           />
         )}
       </main>
+      <Analytics />
     </div>
   );
 }
