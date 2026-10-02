@@ -6,7 +6,7 @@ Target Exam: UGC-NET / JRF NTA Computer-Based Test (CBT) Simulation
              - Paper I: General Paper on Teaching & Research Aptitude
              - Paper II: Subject Specialization (Computer Science & Applications)
              - Combined Paper I + Paper II (Full 3-Hour NTA Examination Simulation)
-Release: Version 2.2 (Multi-Paper Full-Stack SPA)
+Release: Version 3.0 (Multi-Paper Full-Stack SPA)
 Date: 2026-09-27
 
 --------------------------------------------------------------------------------
