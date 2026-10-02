@@ -143,16 +143,6 @@ export interface UserProfile {
   avatarUrl?: string;
 }
 
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
-  isLoggedIn: boolean;
-  provider: 'google';
-  loginTimestamp?: number;
-}
-
 export interface PaperModeDetails {
   mode: TestPaperMode;
   title: string;

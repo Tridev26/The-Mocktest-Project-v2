@@ -423,7 +423,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 font-medium block">Target Score Goal</span>
-                  <span className="font-semibold text-blue-600">{profile.targetScore || 80} / 100 Marks</span>
+                  <span className="font-semibold text-blue-600">{profile.targetScore || 80} / 300 Marks</span>
                 </div>
               </div>
             )}
