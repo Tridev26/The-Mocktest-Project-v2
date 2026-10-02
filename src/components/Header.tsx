@@ -104,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <span className="font-bold text-lg tracking-tight text-white">UGC-NET-MOCK TEST</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                  MOCK ENGINE V.2
+                  MOCK ENGINE V.3
                 </span>
               </div>
             </div>

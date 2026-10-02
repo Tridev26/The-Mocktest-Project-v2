@@ -12,7 +12,7 @@ Date: 2026-09-27
 --------------------------------------------------------------------------------
 1. EXECUTIVE SUMMARY & OBJECTIVES
 --------------------------------------------------------------------------------
-UGC-NET-MOCK TEST (MOCK ENGINE V.2) is a specialized, production-grade examination
+UGC-NET-MOCK TEST (MOCK ENGINE V.3) is a specialized, production-grade examination
 simulation web application designed for aspirants preparing for the National
 Eligibility Test (UGC-NET / JRF) conducted by the National Testing Agency (NTA).
 
